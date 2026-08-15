@@ -5212,6 +5212,41 @@
     });
   }
 
+  function restoreDraftOpenAnchor(draftId, anchorTop, fallbackScrollPosition, listScrollTop) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const list = $(".draft-quick-list");
+        if (list && Number.isFinite(listScrollTop)) {
+          list.scrollTop = listScrollTop;
+        }
+        const target = $$(".open-draft").find((button) => button.dataset.draft === draftId);
+        if (target && Number.isFinite(anchorTop)) {
+          const nextTop = target.getBoundingClientRect().top;
+          const delta = nextTop - anchorTop;
+          if (delta > 0) {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            const missingRoom = window.scrollY + delta - maxScroll;
+            if (missingRoom > 0) {
+              const currentRoom = parseFloat(getComputedStyle($("#logForm")).paddingBottom) || 0;
+              setDraftOpenScrollRoom(currentRoom + missingRoom + 16);
+            }
+          }
+          window.scrollBy({
+            left: 0,
+            top: delta,
+            behavior: "auto"
+          });
+          return;
+        }
+        restoreWindowScroll(fallbackScrollPosition);
+      });
+    });
+  }
+
+  function setDraftOpenScrollRoom(height = 0) {
+    $("#logForm")?.style.setProperty("--draft-open-scroll-room", `${Math.max(0, Math.ceil(height))}px`);
+  }
+
   function switchContactType(type) {
     const previousType = currentContactType();
     const nextType = isStoreVisitMode() ? "customer" : type;
@@ -6085,13 +6120,17 @@
     autosaveTimer = setTimeout(autosaveCurrentDraft, 1500);
   }
 
-  function loadDraftToForm(draftId) {
+  function loadDraftToForm(draftId, options = {}) {
     const draft = getDraft(draftId);
     if (!draft) return;
     if (draft.employeeId && draft.employeeId !== currentEmployeeId()) {
       showToast("只能打开当前账号自己的草稿");
       return;
     }
+    const scrollPosition = options.scrollPosition || currentWindowScrollPosition();
+    const anchorTop = options.anchorTop;
+    const listScrollTop = options.listScrollTop;
+    const previousScrollHeight = document.documentElement.scrollHeight;
     if (activeDraftId !== draft.id && hasMeaningfulFormInput()) {
       saveCurrentDraft({ silent: true, force: true });
     }
@@ -6147,7 +6186,9 @@
     syncCustomerTypeLock();
     syncOldResourceFiltersFromForm({ keepSelection: true, render: true, selectedId: draft.oldCustomerLogId || "" });
     switchView("field");
-    $("#customerInput").focus();
+    setDraftOpenScrollRoom(0);
+    setDraftOpenScrollRoom(previousScrollHeight - document.documentElement.scrollHeight + 16);
+    restoreDraftOpenAnchor(draft.id, anchorTop, scrollPosition, listScrollTop);
     showToast("草稿已打开，可继续修改");
   }
 
@@ -6160,6 +6201,7 @@
     const targetContactLevel = options.contactLevel || "";
     clearTimeout(autosaveTimer);
     suppressAutosave = true;
+    setDraftOpenScrollRoom(0);
     activeDraftId = "";
     $("#logForm").reset();
     setVisitMode(targetMode, { applyFirst: false });
@@ -7066,7 +7108,11 @@
       const draftButton = event.target.closest(".open-draft");
       if (draftButton) {
         event.preventDefault();
-        loadDraftToForm(draftButton.dataset.draft);
+        loadDraftToForm(draftButton.dataset.draft, {
+          anchorTop: draftButton.getBoundingClientRect().top,
+          listScrollTop: draftButton.closest(".draft-quick-list")?.scrollTop || 0,
+          scrollPosition: currentWindowScrollPosition()
+        });
         return;
       }
 
@@ -7666,7 +7712,12 @@
     $("#employeeBoard")?.addEventListener("click", (event) => {
       const draftButton = event.target.closest(".open-draft");
       if (draftButton) {
-        loadDraftToForm(draftButton.dataset.draft);
+        event.preventDefault();
+        loadDraftToForm(draftButton.dataset.draft, {
+          anchorTop: draftButton.getBoundingClientRect().top,
+          listScrollTop: draftButton.closest(".draft-quick-list")?.scrollTop || 0,
+          scrollPosition: currentWindowScrollPosition()
+        });
         return;
       }
 

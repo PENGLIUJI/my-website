@@ -1481,6 +1481,7 @@ button.tag.draft-tag:focus-visible {
 .log-form {
   display: grid;
   gap: 14px;
+  padding-bottom: var(--draft-open-scroll-room, 0px);
 }
 
 .form-row {
