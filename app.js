@@ -2617,7 +2617,8 @@
 
   function postSubmitTargetMode(submittedMode, payload) {
     if (["store", "return"].includes(submittedMode) && payload?.wechatStage === "已成交") return "closed";
-    if (submittedMode === "new" || submittedMode === "store") return "return";
+    if (submittedMode === "store") return "return";
+    if (submittedMode === "new") return "new";
     return submittedMode;
   }
 
@@ -2625,6 +2626,7 @@
     if (targetMode === "closed") return "已转到已成交区，可查看成交客户。";
     if (targetMode === "return" && submittedMode === "return") return "继续回访请先选择下一位老客户。";
     if (targetMode === "return") return "已转到老客户回访，后续跟进在这里选择客户。";
+    if (targetMode === "new" && submittedMode === "new") return "继续录入请点“新登记”。";
     return postSubmitInstruction(targetMode);
   }
 
