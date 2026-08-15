@@ -2595,7 +2595,7 @@
 
   function currentDraftScopeLabel() {
     const modeLabel = currentVisitModeLabel();
-    if (["new", "return"].includes(currentVisitMode())) {
+    if (currentVisitMode() === "return") {
       return `${modeLabel} · ${contactTypeLabel(currentContactType())}`;
     }
     return modeLabel;
@@ -2653,10 +2653,11 @@
     const contactType = currentContactType();
     return draftsForEmployee(employeeId).filter((draft) => {
       if (draftVisitMode(draft) !== mode) return false;
+      if (mode === "new") return true;
       if (mode === "store") {
         return (draft.contactType || "customer") === "customer";
       }
-      if (["new", "return"].includes(mode)) {
+      if (mode === "return") {
         return (draft.contactType || "customer") === contactType;
       }
       return true;
@@ -4990,6 +4991,35 @@
     renderEmployeeDraftTray();
   }
 
+  function switchContactType(type) {
+    const previousType = currentContactType();
+    const nextType = isStoreVisitMode() ? "customer" : type;
+    if (!nextType || nextType === previousType) return;
+
+    const mode = currentVisitMode();
+    const shouldSaveBeforeSwitch = ["new", "return"].includes(mode)
+      && formEditMode
+      && (Boolean(activeDraft()) || hasMeaningfulFormInput());
+
+    if (!shouldSaveBeforeSwitch) {
+      setContactType(nextType);
+      return;
+    }
+
+    saveCurrentDraft({ silent: true, force: true });
+    activeDraftId = "";
+    resetFormForBlankEntry(
+      `已保存${contactTypeLabel(previousType)}草稿。现在可查看${contactTypeLabel(nextType)}草稿，或点“新登记”继续填写。`,
+      {
+        editing: false,
+        level: "success",
+        mode,
+        contactType: nextType
+      }
+    );
+    showToast(`已保存${contactTypeLabel(previousType)}草稿`);
+  }
+
   function setWechatAvatarStatus(message, level = "", detail = "") {
     const status = $("#wechatAvatarStatus");
     if (!status) return;
@@ -6823,7 +6853,7 @@
       });
     });
     $$("[data-contact-type]").forEach((button) => {
-      button.addEventListener("click", () => setContactType(button.dataset.contactType));
+      button.addEventListener("click", () => switchContactType(button.dataset.contactType));
     });
     $("#oldCustomerCascadeButton").addEventListener("click", () => {
       const menu = $("#oldCustomerCascadeMenu");
