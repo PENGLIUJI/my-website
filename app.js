@@ -23,6 +23,32 @@
   const orderChangeDirectStatuses = ["没有改单", "升单"];
   const dealSourceOptions = ["空白客户", "异业介绍", "师傅介绍", "客户介绍", "装修公司介绍", "其他"];
   const contactLevels = ["VIP等级已经介绍客户成交", "会介绍客户", "常沟通没介绍过客户", "少联系"];
+  const channelIndustryCustomValue = "__custom_channel_industry__";
+  const channelIndustryOptions = [
+    "瓷砖",
+    "水电",
+    "木工",
+    "灯饰",
+    "卫浴",
+    "监理",
+    "装修公司",
+    "设计师",
+    "定制柜/全屋定制",
+    "门窗",
+    "地板",
+    "墙纸墙布",
+    "窗帘布艺",
+    "石材",
+    "木门",
+    "防水",
+    "空调/新风",
+    "智能家居",
+    "家电",
+    "软装",
+    "建材卖场",
+    "房产中介",
+    "其他行业"
+  ];
   const demoLoggedInEmployeeId = "emp-chen";
   const viewMeta = {
     overview: { role: "boss", eyebrow: "老板后台", title: "外勤管理总览" },
@@ -226,6 +252,24 @@
     if (level === contactLevels[1]) return "B类";
     if (level === contactLevels[2]) return "C类";
     return "D类";
+  }
+
+  function normalizeChannelIndustry(value) {
+    const industry = String(value || "").trim();
+    const aliases = {
+      "设计师渠道": "设计师",
+      "装修公司渠道": "装修公司",
+      "建材商家": "建材卖场",
+      "家电商家": "家电",
+      "瓷砖店": "瓷砖",
+      "卫浴店": "卫浴",
+      "灯具店": "灯饰",
+      "全屋定制": "定制柜/全屋定制",
+      "定制柜": "定制柜/全屋定制",
+      "空调新风": "空调/新风"
+    };
+    if (!industry || customerTypes.includes(industry)) return "";
+    return aliases[industry] || industry;
   }
 
   function normalizeAfterSaleStatus(value) {
@@ -920,7 +964,7 @@
         contactType: "channel",
         customer: "陈设计",
         phone: "13870002001",
-        customerType: "设计师渠道",
+        customerType: "设计师",
         contactLevel: "VIP等级已经介绍客户成交",
         wechatAdded: "有",
         wechatName: "陈设计软装",
@@ -960,7 +1004,7 @@
         contactType: "channel",
         customer: "周姐",
         phone: "13870002003",
-        customerType: "建材商家",
+        customerType: "瓷砖",
         contactLevel: "常沟通没介绍过客户",
         wechatAdded: "有",
         wechatName: "周姐瓷砖",
@@ -1040,7 +1084,7 @@
         contactType: "channel",
         customer: "吴姐家电",
         phone: "13870002005",
-        customerType: "家电商家",
+        customerType: "家电",
         contactLevel: "常沟通没介绍过客户",
         wechatAdded: "有",
         wechatName: "吴姐家电",
@@ -1216,7 +1260,7 @@
         contactType: "channel",
         customer: "吴设计",
         phone: "13830003004",
-        customerType: "设计师渠道",
+        customerType: "设计师",
         contactLevel: "常沟通没介绍过客户",
         wechatAdded: "有",
         wechatName: "吴设计",
@@ -1670,9 +1714,13 @@
         draft.customerType = "D类";
       }
       if (!isCustomerDraft) {
-        const options = contactConfig(draft.contactType).options;
-        if (!options.includes(draft.customerType)) {
-          draft.customerType = draft.contactType === "channel" ? priorityFromContactLevel(draft.contactLevel) : options[0];
+        if (draft.contactType === "channel") {
+          draft.customerType = normalizeChannelIndustry(draft.customerType) || "其他行业";
+        } else {
+          const options = contactConfig(draft.contactType).options;
+          if (!options.includes(draft.customerType)) {
+            draft.customerType = options[0];
+          }
         }
         draft.property = "";
         draft.buildingNumber = "";
@@ -1697,7 +1745,7 @@
         draft.result = "暂不清楚";
         draft.customerType = "A类";
       }
-      if (["customer", "channel"].includes(draft.contactType || "customer") && shouldForceCustomerTypeA(draft.wechatStage)) {
+      if (isCustomerDraft && shouldForceCustomerTypeA(draft.wechatStage)) {
         draft.customerType = "A类";
       }
       draft.wechatFileNames = normalizeFileNames(draft.wechatFileNames, draft.wechatFileName);
@@ -1752,13 +1800,17 @@
         }
       }
       if (!isCustomerLog) {
-        const options = contactConfig(log.contactType).options;
-        if (!options.includes(log.customerType)) {
-          log.customerType = log.contactType === "channel" ? priorityFromContactLevel(log.contactLevel) : options[0];
+        if (log.contactType === "channel") {
+          log.customerType = normalizeChannelIndustry(log.customerType) || "其他行业";
+        } else {
+          const options = contactConfig(log.contactType).options;
+          if (!options.includes(log.customerType)) {
+            log.customerType = options[0];
+          }
         }
       }
       log.wechatStage = normalizeCustomerFollowStage(log.wechatStage);
-      if (["customer", "channel"].includes(log.contactType || "customer") && shouldForceCustomerTypeA(log.wechatStage)) {
+      if (isCustomerLog && shouldForceCustomerTypeA(log.wechatStage)) {
         log.customerType = "A类";
       }
       if (isCustomerLog && !log.floor) {
@@ -1946,6 +1998,27 @@
     localStorage.setItem(storageKey, JSON.stringify(state));
   }
 
+  function normalizeResourceCategoriesForCurrentState() {
+    let changed = false;
+    state.logs.forEach((log) => {
+      if (log.contactType !== "channel") return;
+      const normalized = normalizeChannelIndustry(log.customerType) || "其他行业";
+      if (log.customerType !== normalized) {
+        log.customerType = normalized;
+        changed = true;
+      }
+    });
+    state.drafts.forEach((draft) => {
+      if (draft.contactType !== "channel") return;
+      const normalized = normalizeChannelIndustry(draft.customerType) || "其他行业";
+      if (draft.customerType !== normalized) {
+        draft.customerType = normalized;
+        changed = true;
+      }
+    });
+    if (changed) saveState();
+  }
+
   function getEmployee(id) {
     return state.employees.find((employee) => employee.id === id);
   }
@@ -2088,10 +2161,10 @@
         triggerEmpty: "请选择异业/渠道",
         statusReady: "选择后自动带出渠道资料",
         statusLoadedPrefix: "已带出渠道",
-        levelOne: "异业分类",
+        levelOne: "所属行业",
         levelTwo: "等级",
         levelThree: "联系人",
-        groupFallback: "未分类",
+        groupFallback: "未填写行业",
         secondFallback: contactLevels[3]
       }
     };
@@ -2161,11 +2234,38 @@
   function renderResourceFilterOptions(selector, values, emptyLabel, selectedValue) {
     const select = $(selector);
     if (!select) return;
+    const optionValues = uniqueValues([
+      ...(selectedValue && !values.includes(selectedValue) ? [selectedValue] : []),
+      ...values
+    ]);
     select.innerHTML = [
       `<option value="">${escapeHtml(emptyLabel)}</option>`,
-      ...values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+      ...optionValues.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
     ].join("");
-    select.value = values.includes(selectedValue) ? selectedValue : "";
+    select.value = optionValues.includes(selectedValue) ? selectedValue : "";
+  }
+
+  function currentContactCategoryValue(type = currentContactType()) {
+    const select = $("#customerTypeSelect");
+    if (!select) return "";
+    if (type === "channel" && select.value === channelIndustryCustomValue) {
+      return $("#channelIndustryCustomInput")?.value.trim() || "";
+    }
+    return select.value || "";
+  }
+
+  function syncOldResourceFiltersFromForm(options = {}) {
+    const type = currentContactType();
+    if (!isReturnVisitMode() || !["master", "channel"].includes(type)) return;
+
+    oldResourceFilters.type = currentContactCategoryValue(type);
+    oldResourceFilters.level = contactLevels.includes($("#contactLevelSelect")?.value)
+      ? $("#contactLevelSelect").value
+      : "";
+    if (!options.keepSelection) oldCustomerCascade.customerId = "";
+    if (options.render) {
+      renderOldResourceOptions(options.selectedId || "");
+    }
   }
 
   function renderOldResourceOptions(selectedId = "") {
@@ -2189,11 +2289,14 @@
     $("#oldCustomerCascadeMenu")?.classList.add("resource-search-menu");
     $("#oldCustomerCascadeMenu")?.classList.remove("resource-cascade");
 
-    const typeOptions = uniqueValues(records.map((log) => log.customerType || config.groupFallback));
+    const typeOptions = uniqueValues([
+      ...records.map((log) => log.customerType || config.groupFallback),
+      currentContactCategoryValue(type)
+    ]);
     const levelOptions = contactLevels.filter((level) => records.some((log) => displayContactLevel(log) === level));
     if (oldResourceFilters.type && !typeOptions.includes(oldResourceFilters.type)) oldResourceFilters.type = "";
     if (oldResourceFilters.level && !levelOptions.includes(oldResourceFilters.level)) oldResourceFilters.level = "";
-    renderResourceFilterOptions("#oldResourceTypeFilter", typeOptions, type === "master" ? "全部工种" : "全部分类", oldResourceFilters.type);
+    renderResourceFilterOptions("#oldResourceTypeFilter", typeOptions, type === "master" ? "全部工种" : "全部行业", oldResourceFilters.type);
     renderResourceFilterOptions("#oldResourceLevelFilter", levelOptions, "全部等级", oldResourceFilters.level);
     if (searchInput) searchInput.value = oldResourceFilters.query;
 
@@ -2507,7 +2610,7 @@
 
     const type = log.contactType || "customer";
     const isCustomer = type === "customer";
-    setContactType(type, log.customerType || "D类", log.contactLevel || "", { refreshReturnPicker: false });
+    setContactType(type, log.customerType || (isCustomer ? "D类" : ""), log.contactLevel || "", { refreshReturnPicker: false });
     if (isCustomer) {
       ensureSelectOption("#buildingSelect", log.property || log.building || displayBuilding(log));
       $("#buildingSelect").value = log.property || log.building || displayBuilding(log);
@@ -2524,7 +2627,7 @@
 
     $("#customerInput").value = log.customer || "";
     $("#phoneInput").value = log.phone || "";
-    setSelectValue("#customerTypeSelect", log.customerType || (type === "channel" ? "D类" : (isCustomer ? "D类" : contactConfig(type).options[0])));
+    setContactCategoryValue(type, log.customerType || (isCustomer ? "D类" : ""));
     setSelectValue("#contactLevelSelect", log.contactLevel || contactLevels[3]);
     setSelectValue("#wechatAddedSelect", displayWechatAdded(log));
     $("#wechatNameInput").value = log.wechatName || log.wechatProof?.customerWechat || "";
@@ -2541,6 +2644,7 @@
     syncWechatAddedByProof(log);
     syncWechatNameRequirement(log);
     syncCustomerTypeLock();
+    syncOldResourceFiltersFromForm({ keepSelection: true });
     setOldCustomerStatus(`${oldCustomerPickerConfig(type).statusLoadedPrefix}：${log.customer || contactTypeLabel(type)}`, "success");
   }
 
@@ -4825,7 +4929,7 @@
   }
 
   function contactTypeUsesPriority(type = currentContactType()) {
-    return ["customer", "channel"].includes(type || "customer");
+    return (type || "customer") === "customer";
   }
 
   function selectedOldCustomerLog() {
@@ -4858,6 +4962,42 @@
     select.title = locked ? "客户阶段已升为A类，不能再降级" : "";
   }
 
+  function syncChannelIndustryInput() {
+    const field = $("#channelIndustryCustomField");
+    const input = $("#channelIndustryCustomInput");
+    const select = $("#customerTypeSelect");
+    if (!field || !input || !select) return;
+    const isCustom = currentContactType() === "channel" && select.value === channelIndustryCustomValue;
+    field.classList.toggle("is-hidden", !isCustom);
+    input.disabled = !isCustom;
+    input.required = isCustom;
+    if (!isCustom) input.value = "";
+  }
+
+  function setContactCategoryValue(type, value) {
+    const select = $("#customerTypeSelect");
+    if (!select) return;
+
+    if (type !== "channel") {
+      setSelectValue("#customerTypeSelect", value);
+      return;
+    }
+
+    const industry = normalizeChannelIndustry(value);
+    const customInput = $("#channelIndustryCustomInput");
+    if (!industry) {
+      select.value = "";
+      if (customInput) customInput.value = "";
+    } else if (channelIndustryOptions.includes(industry)) {
+      select.value = industry;
+      if (customInput) customInput.value = "";
+    } else {
+      select.value = channelIndustryCustomValue;
+      if (customInput) customInput.value = industry;
+    }
+    syncChannelIndustryInput();
+  }
+
   function contactConfig(type) {
     const configs = {
       customer: {
@@ -4885,12 +5025,12 @@
         title: "异业和渠道",
         name: "联系人/渠道名",
         phone: "联系电话",
-        type: "异业分类",
+        type: "所属行业",
         level: "渠道等级",
         wechat: "渠道微信昵称",
         namePlaceholder: "例如：某某设计师",
         wechatPlaceholder: "例如：设计师王姐",
-        options: customerTypes
+        options: channelIndustryOptions
       }
     };
     return configs[type] || configs.customer;
@@ -4969,17 +5109,20 @@
     $("#wechatNameLabel").textContent = config.wechat;
     $("#customerInput").placeholder = config.namePlaceholder;
     $("#wechatNameInput").placeholder = config.wechatPlaceholder;
-    $("#customerTypeSelect").innerHTML = config.options.map((option) => `
-      <option value="${escapeHtml(option)}">${escapeHtml(option)}</option>
-    `).join("");
-    const defaultTypeValue = type === "channel" && config.options.includes("D类") ? "D类" : config.options[0];
-    $("#customerTypeSelect").value = config.options.includes(selectedValue) ? selectedValue : defaultTypeValue;
+    $("#customerTypeSelect").innerHTML = [
+      type === "channel" ? '<option value="">请选择所属行业</option>' : "",
+      ...config.options.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`),
+      type === "channel" ? `<option value="${channelIndustryCustomValue}">其他（手动填写）</option>` : ""
+    ].join("");
+    const defaultTypeValue = type === "channel" ? "" : config.options[0];
+    setContactCategoryValue(type, selectedValue || defaultTypeValue);
     $("#contactLevelLabel").textContent = config.level || "等级";
     const currentLevel = $("#contactLevelSelect").value;
     $("#contactLevelSelect").value = contactLevels.includes(levelValue)
       ? levelValue
       : (contactLevels.includes(currentLevel) ? currentLevel : contactLevels[3]);
     syncFormLayoutByMode();
+    syncChannelIndustryInput();
     syncCustomerTypeLock();
 
     if (options.refreshReturnPicker !== false && isReturnVisitMode()) {
@@ -5465,7 +5608,7 @@
       : (isReturnVisitMode() ? normalizeCustomerFollowStage($("#wechatStageInput").value) : "没有到过店");
     const wechatNameSource = $("#wechatNameInput").dataset.source || existingDraft.wechatNameSource || "";
     const wechatAdded = $("#wechatAddedSelect").value === "有" || wechatFileNames.length || wechatAvatarFileName || wechatName ? "有" : "没有";
-    const selectedCustomerType = $("#customerTypeSelect").value;
+    const selectedCustomerType = currentContactCategoryValue(contactType);
     const shouldUseAType = isStoreVisit || (contactTypeUsesPriority(contactType) && (shouldForceCustomerTypeA(wechatStage) || shouldLockCustomerTypeToA()));
     const finalCustomerType = shouldUseAType ? "A类" : selectedCustomerType;
 
@@ -5893,7 +6036,7 @@
       $("#receptionOtherInput").value = draft.reception || "";
     }
     setSelectValue("#resultSelect", draft.result);
-    setSelectValue("#customerTypeSelect", draft.customerType);
+    setContactCategoryValue(draft.contactType || "customer", draft.customerType);
     setSelectValue("#contactLevelSelect", draft.contactLevel || contactLevels[3]);
     setSelectValue("#wechatAddedSelect", draft.wechatAdded || "没有");
     setSelectValue("#durationInput", String(draft.duration ?? 5));
@@ -5917,6 +6060,7 @@
     renderEmployees();
     setFormEditMode(true);
     syncCustomerTypeLock();
+    syncOldResourceFiltersFromForm({ keepSelection: true, render: true, selectedId: draft.oldCustomerLogId || "" });
     switchView("field");
     $("#customerInput").focus();
     showToast("草稿已打开，可继续修改");
@@ -6790,7 +6934,17 @@
         showToast(stage === "已成交" ? "已成交客户提交后会转入已成交区" : "已自动升为A类，不能再降级");
       }
     });
-    $("#customerTypeSelect").addEventListener("change", syncCustomerTypeLock);
+    $("#customerTypeSelect").addEventListener("change", () => {
+      syncChannelIndustryInput();
+      syncCustomerTypeLock();
+      syncOldResourceFiltersFromForm({ render: true });
+    });
+    $("#channelIndustryCustomInput").addEventListener("input", () => {
+      syncOldResourceFiltersFromForm({ render: true });
+    });
+    $("#contactLevelSelect").addEventListener("change", () => {
+      syncOldResourceFiltersFromForm({ render: true });
+    });
     Object.keys(uploadPreviewConfig).forEach((inputId) => {
       const input = $(`#${inputId}`);
       if (input) {
@@ -6861,6 +7015,8 @@
       menu.classList.toggle("is-hidden", !nextOpen);
       $("#oldCustomerCascadeButton").setAttribute("aria-expanded", String(nextOpen));
       if (nextOpen && currentContactType() !== "customer") {
+        syncOldResourceFiltersFromForm({ keepSelection: true });
+        renderOldResourceOptions($("#oldCustomerSelect").value);
         setTimeout(() => $("#oldResourceSearchInput")?.focus(), 0);
       } else if (nextOpen && oldCustomerTemplate === "search") {
         setTimeout(() => $("#oldCustomerSearchInput")?.focus(), 0);
@@ -7143,11 +7299,25 @@
     $("#oldResourceTypeFilter").addEventListener("change", (event) => {
       oldResourceFilters.type = event.target.value;
       oldCustomerCascade.customerId = "";
+      if (event.target.value) {
+        setContactCategoryValue(currentContactType(), event.target.value);
+        if (formEditMode) {
+          formHasUserChanges = true;
+          scheduleAutosave();
+        }
+      }
       renderOldResourceOptions();
     });
     $("#oldResourceLevelFilter").addEventListener("change", (event) => {
       oldResourceFilters.level = event.target.value;
       oldCustomerCascade.customerId = "";
+      if (event.target.value) {
+        setSelectValue("#contactLevelSelect", event.target.value);
+        if (formEditMode) {
+          formHasUserChanges = true;
+          scheduleAutosave();
+        }
+      }
       renderOldResourceOptions();
     });
     $("#oldCustomerCascadeMenu").addEventListener("input", (event) => {
@@ -7484,6 +7654,7 @@
     bindEvents();
     renderAllUploadPreviews();
     syncAllCollapsibleSections();
+    normalizeResourceCategoriesForCurrentState();
     renderAll();
     setFormEditMode(false, FORM_LOCK_MESSAGE, "warn");
     switchView("overview");
