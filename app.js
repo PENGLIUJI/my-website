@@ -2547,6 +2547,7 @@
   }
 
   function setVisitMode(mode, options = {}) {
+    const previousMode = currentVisitMode();
     const nextMode = mode === "return" ? "return" : mode === "store" ? "store" : mode === "closed" ? "closed" : mode === "afterSale" ? "afterSale" : mode === "installedPaid" ? "installedPaid" : "new";
     const isNew = nextMode === "new";
     const isReturn = nextMode === "return";
@@ -2555,6 +2556,9 @@
     const isAfterSale = nextMode === "afterSale";
     const isInstalledPaid = nextMode === "installedPaid";
     const isLifecycleView = isClosed || isAfterSale || isInstalledPaid;
+    const shouldLockAfterEntryModeChange = previousMode !== nextMode
+      && ["new", "return", "store"].includes(nextMode)
+      && options.keepEditing !== true;
     const preservedDraft = isLifecycleView ? preserveActiveFormBeforeClosedMode() : false;
 
     $("#newVisitMode")?.classList.toggle("active", isNew);
@@ -2595,6 +2599,12 @@
       renderDraftStatus();
       if (preservedDraft) showToast("当前填写内容已自动存为草稿");
       return;
+    }
+    if (shouldLockAfterEntryModeChange) {
+      clearTimeout(autosaveTimer);
+      formHasUserChanges = false;
+      formEditMode = false;
+      clearDraftStatusHint();
     }
     if (!formEditMode) {
       clearDraftStatusHint();
@@ -2732,6 +2742,54 @@
     if (targetMode === "return") return "已转到老客户回访，后续跟进在这里选择客户。";
     if (targetMode === "new" && submittedMode === "new") return "继续录入请点“新登记”。";
     return postSubmitInstruction(targetMode);
+  }
+
+  function entryModeStartHint(mode) {
+    if (mode === "return") return "请先选择老客户，再填写回访。";
+    if (mode === "store") return "需要登记门店客户时，请点“新登记”。";
+    return "需要登记新客户时，请点“新登记”。";
+  }
+
+  function visitModeLabel(mode) {
+    if (mode === "return") return "老客户回访";
+    if (mode === "store") return "门店接待";
+    if (mode === "closed") return "已成交";
+    if (mode === "afterSale") return "售后维护";
+    if (mode === "installedPaid") return "已安装收尾款";
+    return "新增拜访";
+  }
+
+  function switchVisitModeFromUser(mode) {
+    const nextMode = resettableVisitMode(mode);
+    const previousMode = currentVisitMode();
+    if (nextMode === previousMode) {
+      setVisitMode(nextMode);
+      return;
+    }
+
+    if (!["new", "return", "store"].includes(nextMode)) {
+      setVisitMode(nextMode);
+      return;
+    }
+
+    const previousLabel = currentVisitModeLabel();
+    const shouldSaveCurrent = formEditMode && (Boolean(activeDraft()) || hasMeaningfulFormInput());
+    if (shouldSaveCurrent) {
+      saveCurrentDraft({ silent: true, force: true });
+    }
+
+    draftTrayNotice = shouldSaveCurrent
+      ? `刚才的${previousLabel}内容已自动保存为草稿。`
+      : "";
+    resetFormForBlankEntry(
+      `${shouldSaveCurrent ? `已保存${previousLabel}草稿。` : `已切换到${visitModeLabel(nextMode)}。`}${entryModeStartHint(nextMode)}`,
+      {
+        editing: false,
+        level: shouldSaveCurrent ? "success" : "warn",
+        mode: nextMode
+      }
+    );
+    if (shouldSaveCurrent) showToast(`已保存${previousLabel}草稿`);
   }
 
   function findMatchingReturnDraft(payload, excludedId = "") {
@@ -6996,14 +7054,14 @@
       if (!button) return;
       event.preventDefault();
       unlockVisitModeButtons();
-      setVisitMode(button.dataset.visitMode);
+      switchVisitModeFromUser(button.dataset.visitMode);
     });
     $$(".visit-mode button").forEach((button) => {
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         unlockVisitModeButtons();
-        setVisitMode(button.dataset.visitMode);
+        switchVisitModeFromUser(button.dataset.visitMode);
       });
     });
     $$("[data-contact-type]").forEach((button) => {
