@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>拓客管家 | 家具外勤管理系统</title>
+    <link rel="stylesheet" href="./styles.css?v=20260815-1010" />
+  </head>
+  <body>
+    <svg class="svg-sprite" aria-hidden="true">
+      <symbol id="icon-dashboard" viewBox="0 0 24 24">
+        <path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z" />
+      </symbol>
+      <symbol id="icon-map" viewBox="0 0 24 24">
+        <path d="m15 6-6-2-5 2v15l5-2 6 2 5-2V4l-5 2Zm-1 12.6-4-1.3V6.4l4 1.3v10.9Z" />
+      </symbol>
+      <symbol id="icon-log" viewBox="0 0 24 24">
+        <path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Zm2 5h6V6H9v2Zm0 4h6v-2H9v2Z" />
+      </symbol>
+      <symbol id="icon-users" viewBox="0 0 24 24">
+        <path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8.5 1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM2 21a6 6 0 0 1 12 0H2Zm12.4 0a7.9 7.9 0 0 0-2.1-4.7A5.5 5.5 0 0 1 22 21h-7.6Z" />
+      </symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24">
+        <path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2-1.5-2-3.5-2.4 1a7.3 7.3 0 0 0-2.6-1.5L14 2h-4l-.4 3a7.3 7.3 0 0 0-2.6 1.5l-2.4-1-2 3.5 2 1.5c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2 1.5 2 3.5 2.4-1a7.3 7.3 0 0 0 2.6 1.5l.4 3h4l.4-3a7.3 7.3 0 0 0 2.6-1.5l2.4 1 2-3.5-2-1.5ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" />
+      </symbol>
+      <symbol id="icon-pin" viewBox="0 0 24 24">
+        <path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z" />
+      </symbol>
+      <symbol id="icon-camera" viewBox="0 0 24 24">
+        <path d="M8.5 4 7 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3l-1.5-2h-7ZM12 17a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z" />
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M20 6v6h-6l2.4-2.4A6 6 0 0 0 6 13H4a8 8 0 0 1 13.8-5.5L20 6ZM4 18v-6h6l-2.4 2.4A6 6 0 0 0 18 11h2A8 8 0 0 1 6.2 16.5L4 18Z" />
+      </symbol>
+      <symbol id="icon-export" viewBox="0 0 24 24">
+        <path d="M13 3v10.2l3.6-3.6L18 11l-6 6-6-6 1.4-1.4 3.6 3.6V3h2ZM5 19h14v2H5v-2Z" />
+      </symbol>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">TK</div>
+          <div>
+            <strong>拓客管家</strong>
+            <span>家具外勤管理</span>
+          </div>
+        </div>
+
+        <div class="role-switch" aria-label="端口切换">
+          <button class="active" type="button" data-role-switch="boss">老板后台</button>
+          <button type="button" data-role-switch="employee">员工端</button>
+        </div>
+
+        <nav class="side-nav" aria-label="主导航">
+          <div class="nav-group-title" data-role-label="boss">老板后台功能</div>
+          <button class="nav-item active" type="button" data-role="boss" data-view="overview">
+            <svg><use href="#icon-dashboard"></use></svg>
+            <span>工作总览</span>
+          </button>
+          <button class="nav-item" type="button" data-role="boss" data-view="logs">
+            <svg><use href="#icon-log"></use></svg>
+            <span>日志审核</span>
+          </button>
+          <button class="nav-item" type="button" data-role="boss" data-view="staff">
+            <svg><use href="#icon-users"></use></svg>
+            <span>员工绩效</span>
+          </button>
+          <button class="nav-item" type="button" data-role="boss" data-view="settings">
+            <svg><use href="#icon-settings"></use></svg>
+            <span>审核规则</span>
+          </button>
+          <div class="nav-group-title" data-role-label="employee">员工端功能</div>
+          <button class="nav-item" type="button" data-role="employee" data-view="field">
+            <svg><use href="#icon-map"></use></svg>
+            <span>员工填报</span>
+          </button>
+          <button class="nav-item" type="button" data-role="employee" data-view="customers">
+            <svg><use href="#icon-users"></use></svg>
+            <span>客户跟踪</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-status">
+          <span class="pulse"></span>
+          <span id="syncState">本地演示数据</span>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="topbarEyebrow">老板后台</p>
+            <h1 id="topbarTitle">外勤管理总览</h1>
+          </div>
+          <div class="topbar-actions" id="bossTopbarActions">
+            <label class="field compact">
+              <span>日期</span>
+              <input id="workDate" type="date" />
+            </label>
+            <label class="field compact">
+              <span>区域</span>
+              <select id="regionFilter">
+                <option value="all">全部区域</option>
+                <option value="east">东区</option>
+                <option value="south">南区</option>
+                <option value="west">西区</option>
+              </select>
+            </label>
+            <button class="button secondary" id="simulateSync" type="button" title="模拟员工新提交一条日志">
+              <svg><use href="#icon-refresh"></use></svg>
+              <span>模拟同步</span>
+            </button>
+            <button class="button secondary" id="exportCsv" type="button">
+              <svg><use href="#icon-export"></use></svg>
+              <span>导出日志</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="view active" id="view-overview" data-view-panel="overview">
+          <div class="metric-grid" id="metricGrid"></div>
+
+          <div class="dashboard-grid">
+            <section class="panel panel-wide">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">路线与定位</p>
+                  <h2>今日人员位置与拜访路线</h2>
+                </div>
+                <span class="badge info">按最新日志更新</span>
+              </div>
+              <div class="route-map" id="routeMap"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">异常复核</p>
+                  <h2>需要老板复核的记录</h2>
+                </div>
+                <span class="badge danger" id="riskCount">0 条</span>
+              </div>
+              <div class="warning-list" id="warningList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">拜访统计</p>
+                  <h2>按时段统计拜访次数</h2>
+                </div>
+              </div>
+              <div class="bar-chart" id="hourChart"></div>
+            </section>
+
+            <section class="panel panel-wide">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">外勤动态</p>
+                  <h2>员工刚提交的工作内容</h2>
+                </div>
+                <label class="switch">
+                  <input id="autoRefresh" type="checkbox" checked />
+                  <span></span>
+                  <b>自动刷新</b>
+                </label>
+              </div>
+              <div class="timeline" id="liveFeed"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-field" data-view-panel="field">
+          <div class="two-column">
+            <section class="panel employee-entry-panel">
+              <div class="panel-head form-panel-head">
+                <div>
+                  <p class="eyebrow">员工端登记</p>
+                  <h2>拜访日志填报</h2>
+                </div>
+                <div class="segmented visit-mode" aria-label="登记类型">
+                  <button class="active" id="newVisitMode" type="button" data-visit-mode="new">新增拜访</button>
+                  <button id="returnVisitMode" type="button" data-visit-mode="return">老客户回访</button>
+                  <button id="storeVisitMode" type="button" data-visit-mode="store">门店接待</button>
+                  <button id="closedVisitMode" type="button" data-visit-mode="closed">已成交</button>
+                  <button id="afterSaleVisitMode" type="button" data-visit-mode="afterSale">售后维护</button>
+                  <button id="installedPaidVisitMode" type="button" data-visit-mode="installedPaid">已安装收尾款</button>
+                </div>
+              </div>
+              <form class="log-form" id="logForm">
+                <div class="form-edit-gate" id="formEditGate" aria-live="polite">
+                  <strong>未开始登记</strong>
+                  <span>先点下方“新登记”再填写，或在草稿里点“继续编辑”。</span>
+                </div>
+                <div class="contact-type-switch contact-type-top" aria-label="信息类型">
+                  <button class="active" type="button" data-contact-type="customer">客户信息</button>
+                  <button type="button" data-contact-type="master">师傅</button>
+                  <button type="button" data-contact-type="channel">异业和渠道</button>
+                </div>
+                <section class="form-section form-section-return is-hidden" id="oldCustomerSection">
+                  <div class="form-section-head">
+                    <strong>老客户回访</strong>
+                    <button class="section-toggle" type="button" data-section-toggle="oldCustomerBody" aria-expanded="true">
+                      <span>收起</span>
+                      <i>⌃</i>
+                    </button>
+                  </div>
+                  <div class="form-section-body" id="oldCustomerBody">
+                    <div class="form-row old-customer-row">
+                      <div class="field old-customer-cascade">
+                        <span id="oldCustomerPickerLabel">选择老客户</span>
+                        <button class="cascade-trigger" id="oldCustomerCascadeButton" type="button" aria-expanded="false">
+                          <b id="oldCustomerCascadeText">请选择老客户</b>
+                          <i>⌄</i>
+                        </button>
+                        <div class="cascade-menu is-hidden" id="oldCustomerCascadeMenu">
+                          <div class="customer-cascade-panel" id="oldCustomerCustomerPanel">
+                            <div class="old-template-switch" aria-label="老客户检索模板">
+                              <button class="active" type="button" data-old-template="search">搜索列表</button>
+                              <button type="button" data-old-template="area">小区筛选</button>
+                              <button type="button" data-old-template="recent">最近优先</button>
+                            </div>
+                            <div class="old-template-workarea" id="oldCustomerTemplateWorkarea"></div>
+                          </div>
+                          <div class="resource-search-panel is-hidden" id="oldCustomerResourcePanel">
+                            <input id="oldResourceSearchInput" type="search" placeholder="搜索姓名 / 电话 / 微信" />
+                            <div class="resource-filter-row">
+                              <select id="oldResourceTypeFilter"></select>
+                              <select id="oldResourceLevelFilter"></select>
+                            </div>
+                            <div class="resource-result-summary" id="oldResourceResultSummary"></div>
+                            <div class="resource-result-list" id="oldResourceResultList"></div>
+                          </div>
+                        </div>
+                        <input id="oldCustomerSelect" type="hidden" />
+                      </div>
+                      <div class="field-status success" id="oldCustomerStatus">选择后自动带出资料</div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="form-section form-section-closed lifecycle-section is-hidden" id="closedCustomerSection">
+                  <div class="form-section-head">
+                    <strong>已成交客户</strong>
+                    <span class="closed-customer-count" id="closedCustomerCount">0 个</span>
+                  </div>
+                  <div class="form-section-body">
+                    <div class="closed-customer-note">
+                      这里维护成交图片、订单金额和成交资料；售后确认已安装收尾款后，会进入最终归档。
+                    </div>
+                    <div class="field old-customer-cascade closed-customer-picker lifecycle-customer-picker">
+                      <span>客户操作</span>
+                      <button class="cascade-trigger" id="closedCustomerCascadeButton" type="button" aria-expanded="false">
+                        <b id="closedCustomerCascadeText">查找 / 更换成交客户</b>
+                        <i>⌄</i>
+                      </button>
+                      <div class="cascade-menu lifecycle-picker-menu is-hidden" id="closedCustomerCascadeMenu">
+                        <div class="closed-picker-panel">
+                          <input id="closedCustomerSearch" type="search" placeholder="搜索姓名 / 电话 / 小区 / 房号" />
+                          <div class="old-template-switch" aria-label="成交客户检索模板">
+                            <button class="active" type="button" data-closed-template="search">搜索列表</button>
+                            <button type="button" data-closed-template="area">小区筛选</button>
+                            <button type="button" data-closed-template="recent">最近优先</button>
+                          </div>
+                          <div class="old-template-workarea" id="closedCustomerTemplateWorkarea">
+                            <div class="lifecycle-template-controls" id="closedCustomerTemplateControls"></div>
+                            <div class="resource-result-summary" id="closedCustomerResultSummary"></div>
+                            <div class="closed-customer-list" id="closedCustomerList" aria-live="polite"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="closed-customer-detail" id="closedCustomerDetail" aria-live="polite"></div>
+                  </div>
+                </section>
+
+                <section class="form-section form-section-after-sale lifecycle-section is-hidden" id="afterSaleSection">
+                  <div class="form-section-head">
+                    <strong>售后维护</strong>
+                    <span class="closed-customer-count" id="afterSaleCount">0 个</span>
+                  </div>
+                  <div class="form-section-body">
+                    <div class="closed-customer-note">
+                      已成交客户在这里备注安装、尾款和售后问题；已安装收尾款但有售后问题的客户，也会回到这里处理。
+                    </div>
+                    <div class="after-sale-summary" id="afterSaleSummary" aria-live="polite"></div>
+                    <div class="field old-customer-cascade closed-customer-picker lifecycle-customer-picker">
+                      <span>客户操作</span>
+                      <button class="cascade-trigger" id="afterSaleCascadeButton" type="button" aria-expanded="false">
+                        <b id="afterSaleCascadeText">查找 / 更换售后客户</b>
+                        <i>⌄</i>
+                      </button>
+                      <div class="cascade-menu lifecycle-picker-menu is-hidden" id="afterSaleCascadeMenu">
+                        <div class="closed-picker-panel">
+                          <input id="afterSaleSearch" type="search" placeholder="搜索姓名 / 电话 / 小区 / 房号" />
+                          <div class="old-template-switch" aria-label="售后客户检索模板">
+                            <button class="active" type="button" data-after-sale-template="search">搜索列表</button>
+                            <button type="button" data-after-sale-template="area">小区筛选</button>
+                            <button type="button" data-after-sale-template="recent">最近优先</button>
+                          </div>
+                          <div class="old-template-workarea" id="afterSaleTemplateWorkarea">
+                            <div class="lifecycle-template-controls" id="afterSaleTemplateControls"></div>
+                            <div class="resource-result-summary" id="afterSaleResultSummary"></div>
+                            <div class="after-sale-list" id="afterSaleList" aria-live="polite"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="after-sale-detail" id="afterSaleDetail" aria-live="polite"></div>
+                  </div>
+                </section>
+
+                <section class="form-section form-section-installed-paid lifecycle-section is-hidden" id="installedPaidSection">
+                  <div class="form-section-head">
+                    <strong>已安装，收到尾款</strong>
+                    <span class="closed-customer-count" id="installedPaidCount">0 个</span>
+                  </div>
+                  <div class="form-section-body">
+                    <div class="closed-customer-note installed-paid-note">
+                      已安装并收到尾款的客户归档在这里；如果后续出现售后问题，会同步回到售后维护处理。
+                    </div>
+                    <div class="after-sale-summary installed-paid-summary" id="installedPaidSummary" aria-live="polite"></div>
+                    <div class="field old-customer-cascade closed-customer-picker lifecycle-customer-picker">
+                      <span>存档检索</span>
+                      <button class="cascade-trigger" id="installedPaidCascadeButton" type="button" aria-expanded="false">
+                        <b id="installedPaidCascadeText">查找已安装收尾款客户</b>
+                        <i>⌄</i>
+                      </button>
+                      <div class="cascade-menu lifecycle-picker-menu is-hidden" id="installedPaidCascadeMenu">
+                        <div class="closed-picker-panel">
+                          <input id="installedPaidSearch" type="search" placeholder="搜索姓名 / 电话 / 小区 / 房号" />
+                          <div class="old-template-switch" aria-label="已安装收尾款客户检索模板">
+                            <button class="active" type="button" data-installed-paid-template="search">搜索列表</button>
+                            <button type="button" data-installed-paid-template="area">小区筛选</button>
+                            <button type="button" data-installed-paid-template="recent">最近归档</button>
+                          </div>
+                          <div class="old-template-workarea" id="installedPaidTemplateWorkarea">
+                            <div class="lifecycle-template-controls" id="installedPaidTemplateControls"></div>
+                            <div class="resource-result-summary" id="installedPaidResultSummary"></div>
+                            <div class="installed-paid-list" id="installedPaidList" aria-live="polite"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="installed-paid-detail" id="installedPaidDetail" aria-live="polite"></div>
+                  </div>
+                </section>
+
+                <section class="form-section form-section-property" id="propertyInfoSection">
+                  <div class="form-section-head">
+                    <strong>小区信息</strong>
+                    <button class="section-toggle" id="propertyInfoToggle" type="button" data-section-toggle="propertyInfoBody" aria-expanded="true">
+                      <span>收起</span>
+                      <i>⌃</i>
+                    </button>
+                  </div>
+                  <div class="form-section-body" id="propertyInfoBody">
+                    <label class="field">
+                      <span>楼盘 / 小区 / 写字楼</span>
+                      <select id="buildingSelect" required></select>
+                    </label>
+                    <div class="form-row" id="propertyBuildingUnitRow">
+                      <label class="field">
+                        <span>栋数</span>
+                        <select id="buildingNumberSelect" required></select>
+                      </label>
+                      <label class="field">
+                        <span>单元</span>
+                        <select id="unitSelect" required></select>
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="form-section form-section-customer">
+                  <div class="form-section-head">
+                    <strong id="contactSectionTitle">客户信息</strong>
+                    <button class="section-toggle" type="button" data-section-toggle="customerInfoBody" aria-expanded="true">
+                      <span>收起</span>
+                      <i>⌃</i>
+                    </button>
+                  </div>
+                  <div class="form-section-body" id="customerInfoBody">
+                    <div class="form-row contact-detail-grid" id="contactDetailGrid">
+                      <label class="field contact-level-field is-hidden" id="contactLevelSection">
+                        <span id="contactLevelLabel">等级</span>
+                        <select id="contactLevelSelect">
+                          <option value="VIP等级已经介绍客户成交">VIP等级已经介绍客户成交</option>
+                          <option value="会介绍客户">会介绍客户</option>
+                          <option value="常沟通没介绍过客户">常沟通没介绍过客户</option>
+                          <option value="少联系" selected>少联系</option>
+                        </select>
+                      </label>
+                      <label class="field contact-type-field" id="contactTypeField">
+                        <span id="contactTypeLabel">客户类型</span>
+                        <select id="customerTypeSelect" required>
+                          <option value="A类">A类</option>
+                          <option value="B类">B类</option>
+                          <option value="C类">C类</option>
+                          <option value="D类">D类</option>
+                        </select>
+                      </label>
+                      <label class="field contact-name-field" id="contactNameField">
+                        <span id="contactNameLabel">客户姓名</span>
+                        <input id="customerInput" type="text" placeholder="例如：张经理" required />
+                      </label>
+                      <label class="field room-field" id="customerRoomField">
+                        <span>房号</span>
+                        <select id="roomSelect" required></select>
+                      </label>
+                      <label class="field contact-phone-field" id="contactPhoneField">
+                        <span id="contactPhoneLabel">客户电话</span>
+                        <input id="phoneInput" type="tel" placeholder="13800000000" />
+                      </label>
+                    </div>
+                    <div class="form-row wechat-quick-row">
+                      <label class="field">
+                        <span>是否添加微信</span>
+                        <select id="wechatAddedSelect" required>
+                          <option value="没有">没有</option>
+                          <option value="有">有</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span id="wechatNameLabel">客户微信昵称</span>
+                        <input id="wechatNameInput" type="text" placeholder="例如：王女士软装咨询" />
+                      </label>
+                    </div>
+                    <div class="form-row proof-upload-row">
+                      <div class="field upload-field">
+                        <span>微信头像截图</span>
+                        <input class="native-file-input" id="wechatAvatarInput" type="file" accept="image/*" />
+                        <div class="upload-thumb-grid avatar-preview-grid" id="wechatAvatarPreview" aria-live="polite"></div>
+                      </div>
+                      <div class="field-status" id="wechatAvatarStatus">未上传</div>
+                    </div>
+                    <div class="form-row store-result-row is-hidden" id="storeResultSection">
+                      <label class="field">
+                        <span>门店接待结果</span>
+                        <select id="storeResultSelect">
+                          <option value="逛一圈就走">逛一圈就走</option>
+                          <option value="有意向">有意向</option>
+                          <option value="做了预算，下次再来">做了预算，下次再来</option>
+                          <option value="已成交">已成交</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="form-section form-section-site" id="siteSituationSection">
+                  <div class="form-section-head">
+                    <strong>现场情况</strong>
+                    <button class="section-toggle" type="button" data-section-toggle="siteSituationBody" aria-expanded="true">
+                      <span>收起</span>
+                      <i>⌃</i>
+                    </button>
+                  </div>
+                  <div class="form-section-body" id="siteSituationBody">
+                    <div class="form-row site-main-row">
+                      <label class="field">
+                        <span>现场情况</span>
+                        <select id="receptionSelect" required>
+                          <option value="没有开门">没有开门</option>
+                          <option value="有师傅">有师傅</option>
+                          <option value="有业主">有业主</option>
+                          <option value="师傅和业主都在">师傅和业主都在</option>
+                          <option value="其他情况">其他情况</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>装修进度</span>
+                        <select id="resultSelect" required>
+                          <option value="拆改">拆改</option>
+                          <option value="水电">水电</option>
+                          <option value="瓷砖">瓷砖</option>
+                          <option value="木工">木工</option>
+                          <option value="油漆">油漆</option>
+                          <option value="吊顶">吊顶</option>
+                          <option value="定制安装">定制安装</option>
+                          <option value="软装进场">软装进场</option>
+                          <option value="已入住">已入住</option>
+                          <option value="暂不清楚">暂不清楚</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div class="form-row site-extra-row">
+                      <label class="field">
+                        <span>现场停留时长（下拉选择）</span>
+                        <select id="durationInput" required>
+                          <option value="0">0 分钟</option>
+                          <option value="5">5 分钟</option>
+                          <option value="10">10 分钟</option>
+                          <option value="15">15 分钟</option>
+                          <option value="20">20 分钟</option>
+                          <option value="25">25 分钟</option>
+                          <option value="30">30 分钟</option>
+                          <option value="35">35 分钟</option>
+                          <option value="40">40 分钟</option>
+                          <option value="45">45 分钟</option>
+                          <option value="50">50 分钟</option>
+                          <option value="60">60 分钟</option>
+                          <option value="90">90 分钟</option>
+                          <option value="120">120 分钟</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>其他情况补充</span>
+                        <input id="receptionOtherInput" type="text" placeholder="选其他时再填写" />
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="form-section form-section-proof" id="proofInfoSection">
+                  <div class="form-section-head">
+                    <strong>凭证与备注</strong>
+                    <button class="section-toggle" type="button" data-section-toggle="proofInfoBody" aria-expanded="true">
+                      <span>收起</span>
+                      <i>⌃</i>
+                    </button>
+                  </div>
+                  <div class="form-section-body" id="proofInfoBody">
+                    <div class="proof-upload-stack">
+                      <div class="upload-field upload-block">
+                        <div class="upload-block-head">
+                          <span>现场照片凭证</span>
+                          <small>建议 3-5 张，拍门牌、现场、沟通凭证</small>
+                        </div>
+                        <input class="native-file-input" id="photoInput" type="file" accept="image/*" multiple />
+                        <div class="upload-thumb-grid photo-preview-grid" id="photoPreview" aria-live="polite"></div>
+                      </div>
+                      <div class="upload-field upload-block">
+                        <div class="upload-block-head">
+                          <span>微信聊天截图（可选）</span>
+                          <small>最多 6 张，上传后老板可直接查看聊天凭证</small>
+                        </div>
+                        <input class="native-file-input" id="wechatInput" type="file" accept="image/*" multiple />
+                        <div class="upload-thumb-grid chat-preview-grid" id="wechatPreview" aria-live="polite"></div>
+                      </div>
+                    </div>
+                    <div class="form-row" id="customerFollowStageField">
+                      <label class="field">
+                        <span>客户跟进阶段</span>
+                        <select id="wechatStageInput">
+                          <option value="没有到过店">没有到过店</option>
+                          <option value="已到过店">已到过店</option>
+                          <option value="已做过预算">已做过预算</option>
+                          <option value="已成交">已成交</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label class="field">
+                      <span>沟通纪要</span>
+                      <textarea id="noteInput" rows="4" placeholder="记录客户需求、预算、户型、跟进时间"></textarea>
+                    </label>
+                  </div>
+                </section>
+
+                <div class="form-actions">
+                  <button class="button secondary" id="newEntry" type="button">
+                    <svg><use href="#icon-log"></use></svg>
+                    <span>新登记</span>
+                  </button>
+                  <button class="button draft" id="saveDraft" type="button">
+                    <svg><use href="#icon-log"></use></svg>
+                    <span>保存草稿</span>
+                  </button>
+                  <button class="button primary" type="submit">
+                    <svg><use href="#icon-camera"></use></svg>
+                    <span>提交拜访日志</span>
+                  </button>
+                </div>
+                <div class="draft-status" id="draftStatus">填写后会自动保存草稿，正式提交后不能再修改。</div>
+                <div class="draft-quick-panel is-hidden" id="employeeDraftTray" aria-live="polite"></div>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-customers" data-view-panel="customers">
+          <div class="customer-tracker-layout">
+            <section class="panel customer-tracker-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">客户跟踪</p>
+                  <h2>客户信息汇总和提醒</h2>
+                </div>
+              </div>
+              <div class="tracker-tools">
+                <label class="field">
+                  <span>筛选客户</span>
+                  <select id="customerTrackerFilter">
+                    <option value="all">全部客户</option>
+                    <option value="hot">A类重点</option>
+                    <option value="todo">今天要跟</option>
+                    <option value="invalid">无效待审</option>
+                  </select>
+                </label>
+                <label class="field tracker-search">
+                  <span>搜索</span>
+                  <input id="customerTrackerSearch" type="search" placeholder="客户、电话、小区、房号" />
+                </label>
+              </div>
+              <div class="tracker-summary" id="customerTrackerSummary"></div>
+              <div class="customer-list" id="customerTrackerList"></div>
+            </section>
+
+            <section class="panel customer-detail-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">客户详情</p>
+                  <h2>装修时间线和背景情况</h2>
+                </div>
+              </div>
+              <div class="customer-detail" id="customerTrackerDetail"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-logs" data-view-panel="logs">
+          <section class="panel">
+            <div class="panel-head table-head">
+              <div>
+                <p class="eyebrow">日志审核</p>
+                <h2>员工提交的拜访记录</h2>
+              </div>
+              <div class="table-tools">
+                <input id="logSearch" type="search" placeholder="搜索员工、楼盘、客户、纪要" />
+                <select id="statusFilter">
+                  <option value="all">全部装修进度</option>
+                  <option value="拆改">拆改</option>
+                  <option value="水电">水电</option>
+                  <option value="瓷砖">瓷砖</option>
+                  <option value="木工">木工</option>
+                  <option value="油漆">油漆</option>
+                  <option value="吊顶">吊顶</option>
+                  <option value="定制安装">定制安装</option>
+                  <option value="软装进场">软装进场</option>
+                  <option value="已入住">已入住</option>
+                  <option value="暂不清楚">暂不清楚</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>员工</th>
+                    <th>楼盘</th>
+                    <th>客户</th>
+                    <th>现场情况/等级</th>
+                    <th>装修进度</th>
+                    <th>客户类型</th>
+                    <th>房号</th>
+                    <th>照片数</th>
+                    <th>停留时长</th>
+                    <th>审核状态</th>
+                  </tr>
+                </thead>
+                <tbody id="logTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">修改记录</p>
+                <h2>员工修改客户资料记录</h2>
+              </div>
+              <span class="badge info" id="changeLogCount">0 条</span>
+            </div>
+            <div class="change-log-list" id="changeLogList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">装修进度</p>
+                <h2>按装修阶段分类的客户</h2>
+              </div>
+            </div>
+            <div class="lead-board" id="leadBoard"></div>
+          </section>
+        </section>
+
+        <section class="view" id="view-staff" data-view-panel="staff">
+          <div class="two-column compact-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">员工绩效</p>
+                  <h2>今日拜访目标完成情况</h2>
+                </div>
+              </div>
+              <div class="staff-list" id="staffList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">员工管理</p>
+                  <h2>添加新的外勤员工</h2>
+                </div>
+              </div>
+              <form class="log-form" id="staffForm">
+                <label class="field">
+                  <span>姓名</span>
+                  <input id="newStaffName" type="text" placeholder="员工姓名" required />
+                </label>
+                <label class="field">
+                  <span>负责区域</span>
+                  <select id="newStaffRegion">
+                    <option value="东区">东区</option>
+                    <option value="南区">南区</option>
+                    <option value="西区">西区</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>每日目标</span>
+                  <input id="newStaffTarget" type="number" min="1" max="50" value="10" />
+                </label>
+                <button class="button primary" type="submit">添加员工</button>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-settings" data-view-panel="settings">
+          <section class="panel settings-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">审核规则</p>
+                <h2>判断日志是否需要复核的标准</h2>
+              </div>
+              <button class="button secondary" id="resetDemo" type="button">恢复演示数据</button>
+            </div>
+            <div class="settings-grid">
+              <label class="setting-line">
+                <span>
+                  <strong>要求现场照片</strong>
+                  <small>照片少于要求时标记为需要复核</small>
+                </span>
+                <input id="photoRule" type="checkbox" checked />
+              </label>
+              <label class="setting-line">
+                <span>
+                  <strong>最少照片张数</strong>
+                  <small>每条拜访日志至少需要几张现场照片</small>
+                </span>
+                <input id="minPhotos" type="number" min="0" max="9" value="1" />
+              </label>
+              <label class="setting-line">
+                <span>
+                  <strong>最长未更新分钟数</strong>
+                  <small>员工超过这个时间没交日志时提醒老板确认</small>
+                </span>
+                <input id="gapMinutes" type="number" min="30" max="360" value="120" />
+              </label>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div class="detail-modal" id="detailModal" hidden>
+      <div class="detail-backdrop" data-close-detail></div>
+      <section class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+        <header class="detail-head">
+          <div>
+            <p class="eyebrow" id="detailSubtitle">明细</p>
+            <h2 id="detailTitle">查看明细</h2>
+          </div>
+          <button class="close-button" type="button" data-close-detail title="关闭明细">×</button>
+        </header>
+        <div class="detail-body" id="detailBody"></div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js?v=20260815-1010"></script>
+  </body>
+</html>
