@@ -1494,29 +1494,36 @@ button.tag.draft-tag:focus-visible {
   grid-template-columns: minmax(112px, 0.72fr) minmax(0, 1.28fr);
 }
 
-.contact-detail-grid .contact-level-field,
 .contact-detail-grid .contact-type-field {
   order: 1;
 }
 
-.contact-detail-grid .contact-name-field {
+.contact-detail-grid .contact-level-field {
   order: 2;
 }
 
-.contact-detail-grid .room-field {
+.contact-detail-grid .channel-custom-field {
   order: 3;
+}
+
+.contact-detail-grid .contact-name-field {
+  order: 4;
+}
+
+.contact-detail-grid .room-field {
+  order: 5;
 }
 
 .contact-detail-grid .contact-phone-field {
-  order: 4;
+  order: 6;
 }
 
 .contact-detail-grid.resource-mode .contact-name-field {
-  order: 3;
+  order: 4;
 }
 
 .contact-detail-grid.resource-mode .contact-phone-field {
-  order: 4;
+  order: 5;
 }
 
 .form-row.site-main-row,
