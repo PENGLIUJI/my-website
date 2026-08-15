@@ -5192,6 +5192,13 @@
     renderEmployeeDraftTray();
   }
 
+  function currentWindowScrollPosition() {
+    return {
+      left: window.scrollX,
+      top: window.scrollY
+    };
+  }
+
   function restoreWindowScroll(position) {
     if (!position) return;
     requestAnimationFrame(() => {
@@ -5209,10 +5216,7 @@
     const previousType = currentContactType();
     const nextType = isStoreVisitMode() ? "customer" : type;
     if (!nextType || nextType === previousType) return;
-    const scrollPosition = {
-      left: window.scrollX,
-      top: window.scrollY
-    };
+    const scrollPosition = currentWindowScrollPosition();
 
     const mode = currentVisitMode();
     const shouldSaveBeforeSwitch = ["new", "return"].includes(mode)
@@ -5800,8 +5804,9 @@
     if (element.closest("#afterSaleSection")) return true;
     if (element.closest("#installedPaidSection")) return true;
     if (element.closest("#newEntry") || element.closest("#employeeDraftTray")) return true;
+    if (element.closest(".contact-type-switch") && ["new", "return"].includes(currentVisitMode())) return true;
     if (!isReturnVisitMode()) return false;
-    return Boolean(element.closest("#oldCustomerSection") || element.closest(".contact-type-switch"));
+    return Boolean(element.closest("#oldCustomerSection"));
   }
 
   function syncFormEditModeControls() {
@@ -6000,6 +6005,7 @@
       return null;
     }
     if (!force && !hasMeaningfulFormInput() && !activeDraft()) return null;
+    const scrollPosition = currentWindowScrollPosition();
     draftTrayNotice = "";
     const now = new Date().toISOString();
     let draft = activeDraft();
@@ -6035,6 +6041,7 @@
       setDraftStatusHint(`草稿已保存 ${formatTime(now)}，下方“未提交草稿”可继续编辑。`, "success");
       showToast("草稿已保存，可继续修改");
     }
+    restoreWindowScroll(scrollPosition);
     return savedDraft;
   }
 
@@ -6175,7 +6182,7 @@
     renderEmployeeDraftTray();
     setFormEditMode(editing, statusMessage, statusLevel);
     switchView("field");
-    if (editing) {
+    if (editing && !options.preserveScroll) {
       $("#buildingSelect").focus();
     } else if (targetMode === "return") {
       renderOldCustomerOptions();
@@ -6196,16 +6203,32 @@
   function startNewLogForEmployee() {
     draftTrayNotice = "";
     const targetMode = isStoreVisitMode() ? "store" : "new";
-    const startLabel = targetMode === "store" ? "门店接待" : "新客户";
+    const targetContactType = targetMode === "store" ? "customer" : currentContactType();
+    const startLabel = targetMode === "store"
+      ? "门店接待"
+      : (targetContactType === "customer" ? "新客户" : contactTypeLabel(targetContactType));
+    const scrollPosition = currentWindowScrollPosition();
     const shouldPreserveCurrent = hasMeaningfulFormInput() || activeDraft();
     if (shouldPreserveCurrent) {
       saveCurrentDraft({ silent: true, force: true });
-      resetFormForBlankEntry(`上一条已存为草稿，现在可以填写${startLabel}。`, { editing: true, mode: targetMode });
+      resetFormForBlankEntry(`上一条已存为草稿，现在可以填写${startLabel}。`, {
+        editing: true,
+        mode: targetMode,
+        contactType: targetContactType,
+        preserveScroll: true,
+        scrollPosition
+      });
       showToast(`上一条已存为草稿，开始${startLabel}登记`);
       return;
     }
 
-    resetFormForBlankEntry(`已开始${startLabel}登记，填写后会自动保存草稿。`, { editing: true, mode: targetMode });
+    resetFormForBlankEntry(`已开始${startLabel}登记，填写后会自动保存草稿。`, {
+      editing: true,
+      mode: targetMode,
+      contactType: targetContactType,
+      preserveScroll: true,
+      scrollPosition
+    });
     showToast(`已开始${startLabel}登记`);
   }
 
@@ -7065,7 +7088,10 @@
         removeUploadFile(removeButton.dataset.uploadRemove, Number(removeButton.dataset.uploadIndex));
       }
     });
-    $("#saveDraft").addEventListener("click", saveCurrentDraft);
+    $("#saveDraft").addEventListener("click", (event) => {
+      event.preventDefault();
+      saveCurrentDraft();
+    });
     $("#newEntry").addEventListener("click", startNewLogForEmployee);
     $("#clearForm")?.addEventListener("click", clearCurrentForm);
     $("#logForm").querySelector('button[type="submit"]').addEventListener("click", expandVisibleEmployeeSections);
@@ -7520,6 +7546,7 @@
         promptStartFormEdit();
         return;
       }
+      const scrollPosition = currentWindowScrollPosition();
       clearTimeout(autosaveTimer);
       suppressAutosave = true;
       const submittedDraftId = activeDraftId;
@@ -7619,7 +7646,9 @@
         submittedMode,
         contactType: payload.contactType,
         customerType: payload.customerType,
-        contactLevel: payload.contactLevel
+        contactLevel: payload.contactLevel,
+        preserveScroll: true,
+        scrollPosition
       });
       if (lifecycleSyncResult?.changed) {
         showToast(`${submitLabel}已提交，${lifecycleSyncResult.stage}已联动${lifecycleSyncResult.logs + lifecycleSyncResult.records}条客户资料`);
