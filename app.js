@@ -5192,10 +5192,27 @@
     renderEmployeeDraftTray();
   }
 
+  function restoreWindowScroll(position) {
+    if (!position) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          left: position.left,
+          top: position.top,
+          behavior: "auto"
+        });
+      });
+    });
+  }
+
   function switchContactType(type) {
     const previousType = currentContactType();
     const nextType = isStoreVisitMode() ? "customer" : type;
     if (!nextType || nextType === previousType) return;
+    const scrollPosition = {
+      left: window.scrollX,
+      top: window.scrollY
+    };
 
     const mode = currentVisitMode();
     const shouldSaveBeforeSwitch = ["new", "return"].includes(mode)
@@ -5204,6 +5221,7 @@
 
     if (!shouldSaveBeforeSwitch) {
       setContactType(nextType);
+      restoreWindowScroll(scrollPosition);
       return;
     }
 
@@ -5215,7 +5233,9 @@
         editing: false,
         level: "success",
         mode,
-        contactType: nextType
+        contactType: nextType,
+        preserveScroll: true,
+        scrollPosition
       }
     );
     showToast(`已保存${contactTypeLabel(previousType)}草稿`);
@@ -6162,14 +6182,15 @@
       setOldCustomerStatus(postSubmitTargetMessage("return", options.submittedMode || targetMode), "success");
       $("#oldCustomerCascadeMenu")?.classList.add("is-hidden");
       $("#oldCustomerCascadeButton")?.setAttribute("aria-expanded", "false");
-      $("#oldCustomerCascadeButton")?.focus();
+      if (!options.preserveScroll) $("#oldCustomerCascadeButton")?.focus();
     } else if (targetMode === "closed") {
       setLifecyclePickerOpen("closed", false);
       renderClosedCustomers();
-      $("#closedCustomerCascadeButton")?.focus();
+      if (!options.preserveScroll) $("#closedCustomerCascadeButton")?.focus();
     } else {
-      $("#newEntry").focus();
+      if (!options.preserveScroll) $("#newEntry").focus();
     }
+    if (options.preserveScroll) restoreWindowScroll(options.scrollPosition);
   }
 
   function startNewLogForEmployee() {
