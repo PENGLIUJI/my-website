@@ -7,6 +7,8 @@
   const defaultBuildingNumbers = ["1栋", "2栋", "3栋", "4栋", "5栋", "6栋", "7栋", "8栋", "9栋", "10栋", "11栋", "12栋"];
   const defaultUnits = ["1单元", "2单元", "3单元", "4单元"];
   const renovationStages = ["拆改", "水电", "瓷砖", "木工", "油漆", "吊顶", "定制安装", "软装进场", "已入住", "暂不清楚"];
+  const propertyCustomValue = "__custom_property__";
+  const renovationCustomValue = "__custom_result__";
   const customerTypes = ["A类", "B类", "C类", "D类"];
   const customerFollowStages = ["没有到过店", "已到过店", "已做过预算", "已成交"];
   const storeVisitResults = ["逛一圈就走", "有意向", "做了预算，下次再来", "已成交"];
@@ -513,7 +515,7 @@
   }
 
   function isCustomerContactLog(log) {
-    return (log.contactType || "customer") === "customer";
+    return (log.contactType || "customer") === "customer" && !log.storeAnonymous;
   }
 
   function coerceBuildingNumber(value, fallback = "1栋") {
@@ -2114,6 +2116,77 @@
     return stage;
   }
 
+  function currentStoreResult() {
+    return normalizeStoreVisitResult($("#storeResultSelect")?.value);
+  }
+
+  function currentStoreContactStatus() {
+    const result = currentStoreResult();
+    if (result === "逛一圈就走") return "未留资料";
+    if (result === "已成交") return "已留资料";
+    return $("#storeContactSelect")?.value || "未留资料";
+  }
+
+  function storeResultNeedsContactChoice(result = currentStoreResult()) {
+    return ["有意向", "做了预算，下次再来"].includes(normalizeStoreVisitResult(result));
+  }
+
+  function storeNeedsCustomerInfo() {
+    const result = currentStoreResult();
+    return result === "已成交" || currentStoreContactStatus() === "已留资料";
+  }
+
+  function storeNeedsPropertyInfo() {
+    return currentStoreResult() === "已成交";
+  }
+
+  function storeAllowsAnonymous(payload = {}) {
+    return payload.visitType === "门店接待" && payload.storeAnonymous;
+  }
+
+  function storeAnonymousLabel(result = currentStoreResult()) {
+    if (result === "逛一圈就走") return "到店客流";
+    if (result === "做了预算，下次再来") return "预算客户未留资料";
+    return "意向客户未留资料";
+  }
+
+  function clearStoreHiddenContactFields() {
+    if (!isStoreVisitMode() || storeNeedsCustomerInfo()) return;
+    $("#customerInput").value = "";
+    $("#phoneInput").value = "";
+    $("#wechatAddedSelect").value = "没有";
+    $("#wechatNameInput").value = "";
+    delete $("#wechatNameInput").dataset.source;
+    setWechatAvatarStatus("未上传");
+    setRememberedUpload("wechatAvatarInput", []);
+    clearWechatHomepageFingerprint();
+  }
+
+  function syncStoreReceptionLayout(options = {}) {
+    const result = currentStoreResult();
+    const needsChoice = storeResultNeedsContactChoice(result);
+    const contactStatus = currentStoreContactStatus();
+    $("#storeResultSelect").value = result;
+    $("#storeContactSelect").value = contactStatus;
+    $$("[data-store-result]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.storeResult === result);
+    });
+    $$("[data-store-contact]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.storeContact === contactStatus);
+    });
+    $("#storeContactChoice")?.classList.toggle("is-hidden", !needsChoice);
+    const hintMap = {
+      "逛一圈就走": "不留资料，提交后只统计到店客流",
+      "有意向": contactStatus === "已留资料" ? "填写电话或微信，提交后进入老客户回访" : "未留资料，只记录意向客流",
+      "做了预算，下次再来": contactStatus === "已留资料" ? "预算客户会重点跟进" : "未留资料，只记录预算客流",
+      "已成交": "成交客户需填写资料，提交后进入已成交区"
+    };
+    $("#storeResultHint").textContent = hintMap[result] || "先选客户这次到店属于哪种情况";
+    if (options.clearHidden !== false) clearStoreHiddenContactFields();
+    syncStoreVisitResultStage();
+    syncCustomerTypeLock();
+  }
+
   function ensureSelectOption(selector, value, label = value) {
     const select = $(selector);
     if (!select || !value) return;
@@ -2121,6 +2194,56 @@
     if (!exists) {
       select.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`);
     }
+  }
+
+  function syncScrollPicker(selectId) {
+    const select = $(`#${selectId}`);
+    const trigger = $(`[data-scroll-picker="${selectId}"]`);
+    const text = $(`#${selectId}PickerText`);
+    const menu = $(`#${selectId}PickerMenu`);
+    if (!select || !trigger || !text || !menu) return;
+    const selectedOption = select.options[select.selectedIndex];
+    text.textContent = selectedOption?.textContent || "请选择";
+    trigger.disabled = select.disabled;
+    trigger.classList.toggle("is-disabled", select.disabled);
+    menu.innerHTML = Array.from(select.options).map((option) => `
+      <button class="${option.value === select.value ? "active" : ""}" type="button" data-scroll-option="${escapeHtml(selectId)}" data-scroll-value="${escapeHtml(option.value)}">
+        ${escapeHtml(option.textContent)}
+      </button>
+    `).join("");
+  }
+
+  function syncAllScrollPickers() {
+    ["buildingSelect", "resultSelect"].forEach(syncScrollPicker);
+  }
+
+  function closeScrollPickers(exceptId = "") {
+    ["buildingSelect", "resultSelect"].forEach((selectId) => {
+      if (selectId === exceptId) return;
+      $(`#${selectId}PickerMenu`)?.classList.add("is-hidden");
+      $(`[data-scroll-picker="${selectId}"]`)?.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function toggleScrollPicker(selectId) {
+    const select = $(`#${selectId}`);
+    const trigger = $(`[data-scroll-picker="${selectId}"]`);
+    const menu = $(`#${selectId}PickerMenu`);
+    if (!select || !trigger || !menu || trigger.disabled || select.disabled) return;
+    const nextOpen = menu.classList.contains("is-hidden");
+    closeScrollPickers(nextOpen ? selectId : "");
+    menu.classList.toggle("is-hidden", !nextOpen);
+    trigger.setAttribute("aria-expanded", String(nextOpen));
+    if (nextOpen) syncScrollPicker(selectId);
+  }
+
+  function chooseScrollPickerOption(selectId, value) {
+    const select = $(`#${selectId}`);
+    if (!select) return;
+    select.value = value;
+    closeScrollPickers();
+    syncScrollPicker(selectId);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   function closedCustomerForKey(key) {
@@ -2662,8 +2785,7 @@
     const isCustomer = type === "customer";
     setContactType(type, log.customerType || (isCustomer ? "D类" : ""), log.contactLevel || "", { refreshReturnPicker: false });
     if (isCustomer) {
-      ensureSelectOption("#buildingSelect", log.property || log.building || displayBuilding(log));
-      $("#buildingSelect").value = log.property || log.building || displayBuilding(log);
+      setPropertyValue(log.property || log.building || displayBuilding(log));
       renderBuildingNumberOptions();
       ensureSelectOption("#buildingNumberSelect", log.buildingNumber || coerceBuildingNumber(log.building));
       setSelectValue("#buildingNumberSelect", log.buildingNumber || coerceBuildingNumber(log.building));
@@ -2682,7 +2804,7 @@
     setSelectValue("#wechatAddedSelect", displayWechatAdded(log));
     $("#wechatNameInput").value = log.wechatName || log.wechatProof?.customerWechat || "";
     $("#wechatNameInput").dataset.source = log.wechatNameSource || "老客户资料";
-    setSelectValue("#resultSelect", log.result || "暂不清楚");
+    setRenovationResultValue(log.result || "暂不清楚");
     setSelectValue("#wechatStageInput", normalizeCustomerFollowStage(log.wechatStage));
     setWechatAvatarStatus(
       log.wechatAvatarFileName ? "已记录主页截图" : "可上传主页截图",
@@ -2781,6 +2903,7 @@
 
   function postSubmitTargetMode(submittedMode, payload) {
     if (["store", "return"].includes(submittedMode) && payload?.wechatStage === "已成交") return "closed";
+    if (submittedMode === "store" && payload?.storeAnonymous) return "store";
     if (submittedMode === "store") return "return";
     if (submittedMode === "new") return "new";
     return submittedMode;
@@ -5180,6 +5303,42 @@
     syncAllCollapsibleSections();
   }
 
+  function setSectionInputsDisabled(sectionSelector, disabled) {
+    const section = $(sectionSelector);
+    if (!section) return;
+    section.querySelectorAll("input, select, textarea, button").forEach((element) => {
+      if (element.closest(".form-section-head")) return;
+      element.disabled = disabled;
+    });
+  }
+
+  function syncConditionalFieldStates() {
+    const isCustomer = currentContactType() === "customer";
+    const isStore = isStoreVisitMode();
+    const storeCustomerInfo = !isStore || storeNeedsCustomerInfo();
+    const storePropertyInfo = !isStore || storeNeedsPropertyInfo();
+    const propertyHidden = $("#propertyInfoSection")?.classList.contains("is-hidden") || !isCustomer || !storePropertyInfo;
+    const customerHidden = $("#customerInfoSection")?.classList.contains("is-hidden") || (isStore && !storeCustomerInfo);
+    const siteHidden = $("#siteSituationSection")?.classList.contains("is-hidden");
+    const proofHidden = $("#proofInfoSection")?.classList.contains("is-hidden");
+
+    if (formEditMode) {
+      setSectionInputsDisabled("#propertyInfoSection", propertyHidden);
+      setSectionInputsDisabled("#customerInfoSection", customerHidden);
+      setSectionInputsDisabled("#siteSituationSection", siteHidden);
+      setSectionInputsDisabled("#proofInfoSection", proofHidden);
+    }
+
+    $("#customerInput").required = !customerHidden && (!isStore || currentStoreResult() === "已成交");
+    $("#phoneInput").required = false;
+    $("#buildingSelect").required = !propertyHidden && !isStore;
+    $("#roomSelect").required = !propertyHidden && !isStore;
+    $("#resultSelect").required = !siteHidden;
+    syncCustomPropertyInput();
+    syncCustomResultInput();
+    syncAllScrollPickers();
+  }
+
   function syncFormLayoutByMode() {
     const isCustomer = currentContactType() === "customer";
     const isReturn = isReturnVisitMode();
@@ -5188,18 +5347,22 @@
     const isAfterSale = isAfterSaleVisitMode();
     const isInstalledPaid = isInstalledPaidVisitMode();
     const isLifecycleView = isClosed || isAfterSale || isInstalledPaid;
+    if (isStore) syncStoreReceptionLayout({ clearHidden: false });
     $("#closedCustomerSection")?.classList.toggle("is-hidden", !isClosed);
     $("#afterSaleSection")?.classList.toggle("is-hidden", !isAfterSale);
     $("#installedPaidSection")?.classList.toggle("is-hidden", !isInstalledPaid);
+    $("#storeReceptionSection")?.classList.toggle("is-hidden", !isStore || isLifecycleView);
+    $(".contact-type-top")?.classList.toggle("is-hidden", isStore || isLifecycleView);
     $("#siteSituationSection")?.classList.toggle("is-hidden", isLifecycleView || isStore || !isCustomer);
     $("#proofInfoSection")?.classList.toggle("is-hidden", isLifecycleView || isStore);
     $("#contactLevelSection")?.classList.toggle("is-hidden", isCustomer);
-    $("#storeResultSection")?.classList.toggle("is-hidden", !isStore);
     $("#customerFollowStageField")?.classList.toggle("is-hidden", !isReturn);
-    $("#propertyInfoSection")?.classList.toggle("is-hidden", isLifecycleView || isReturn || !isCustomer);
+    $("#propertyInfoSection")?.classList.toggle("is-hidden", isLifecycleView || isReturn || !isCustomer || (isStore && !storeNeedsPropertyInfo()));
+    $("#customerInfoSection")?.classList.toggle("is-hidden", isLifecycleView || (isStore && !storeNeedsCustomerInfo()));
     $("#customerRoomField")?.classList.toggle("is-hidden", !isCustomer);
     $("#contactDetailGrid")?.classList.toggle("resource-mode", !isCustomer);
     syncAllCollapsibleSections();
+    syncConditionalFieldStates();
   }
 
   function setContactType(type, selectedValue = "", levelValue = "", options = {}) {
@@ -5814,14 +5977,17 @@
     const photoFiles = isStoreVisit ? [] : Array.from($("#photoInput").files);
     const wechatFiles = isStoreVisit ? [] : Array.from($("#wechatInput").files);
     const wechatAvatarFile = $("#wechatAvatarInput").files[0];
-    const selectedBuilding = $("#buildingSelect").value;
+    const storeResult = isStoreVisit ? normalizeStoreVisitResult($("#storeResultSelect")?.value) : "";
+    const storeContactStatus = isStoreVisit ? currentStoreContactStatus() : "";
+    const storeAnonymous = isStoreVisit && storeResult !== "已成交" && storeContactStatus !== "已留资料";
+    const selectedBuilding = currentPropertyValue();
     const selectedBuildingNumber = $("#buildingNumberSelect").value;
     const selectedUnit = $("#unitSelect").value;
     const selectedRoom = $("#roomSelect").value;
     const selectedFloor = extractFloor(selectedRoom) || "1";
     const contactType = isStoreVisit ? "customer" : currentContactType();
     const isCustomerContact = contactType === "customer";
-    const shouldSaveProperty = isCustomerContact;
+    const shouldSaveProperty = isCustomerContact && (!isStoreVisit || storeNeedsPropertyInfo());
     const locationValue = shouldSaveProperty
       ? [selectedBuildingNumber + selectedUnit, selectedRoom].filter(Boolean).join(" ")
       : "";
@@ -5839,8 +6005,8 @@
     const wechatHomepageFingerprint = wechatAvatarFile
       ? ($("#wechatAvatarInput")?.dataset.homepageFingerprint || existingDraft.wechatHomepageFingerprint || "")
       : (existingDraft.wechatHomepageFingerprint || $("#wechatAvatarInput")?.dataset.homepageFingerprint || "");
+    const rawCustomerName = $("#customerInput").value.trim();
     const wechatName = $("#wechatNameInput").value.trim();
-    const storeResult = isStoreVisit ? normalizeStoreVisitResult($("#storeResultSelect")?.value) : "";
     let wechatStage = isStoreVisit
       ? storeVisitResultStage(storeResult)
       : (isReturnVisitMode() ? normalizeCustomerFollowStage($("#wechatStageInput").value) : "没有到过店");
@@ -5856,34 +6022,36 @@
       contactType,
       employeeId: currentEmployeeId(),
       storeResult,
+      storeContactStatus,
+      storeAnonymous,
       property: shouldSaveProperty ? selectedBuilding : "",
       buildingNumber: shouldSaveProperty ? selectedBuildingNumber : "",
       unit: shouldSaveProperty ? selectedUnit : "",
       building: shouldSaveProperty ? `${selectedBuilding} ${selectedBuildingNumber}${selectedUnit}` : "",
       room: shouldSaveProperty ? selectedRoom : "",
       floor: shouldSaveProperty ? selectedFloor : "",
-      customer: $("#customerInput").value.trim(),
-      phone: $("#phoneInput").value.trim(),
+      customer: storeAnonymous ? storeAnonymousLabel(storeResult) : rawCustomerName,
+      phone: storeAnonymous ? "" : $("#phoneInput").value.trim(),
       reception: finalReception,
       receptionOther: isCustomerContact && !isStoreVisit ? receptionOther : "",
-      result: isStoreVisit ? "暂不清楚" : (isCustomerContact ? $("#resultSelect").value : "暂不清楚"),
+      result: isStoreVisit ? "暂不清楚" : (isCustomerContact ? (currentRenovationResultValue() || "暂不清楚") : "暂不清楚"),
       customerType: finalCustomerType,
       contactLevel: isCustomerContact ? "" : ($("#contactLevelSelect").value || contactLevels[3]),
-      wechatAdded,
+      wechatAdded: storeAnonymous ? "没有" : wechatAdded,
       location: locationValue,
-      locationSource: shouldSaveProperty ? "楼栋房号自动生成" : "师傅/异业资源，无需楼盘房号",
+      locationSource: shouldSaveProperty ? "楼栋房号自动生成" : (isStoreVisit ? "门店接待，未填写楼盘房号" : "师傅/异业资源，无需楼盘房号"),
       photos: isStoreVisit ? 0 : (photoFiles.length ? photoFiles.length : Number(existingDraft.photos || 0)),
       photoNames,
       duration: isCustomerContact ? (isStoreVisit || finalReception === "没有开门" ? 0 : Number($("#durationInput").value)) : 0,
       durationSource: isStoreVisit ? "门店接待，无需现场停留" : (isCustomerContact ? "员工下拉选择" : "师傅/异业等级记录，无需填写现场停留"),
       wechatFileName,
       wechatFileNames,
-      wechatAvatarFileName,
-      wechatHomepageFingerprint,
-      wechatName,
-      wechatNameSource,
+      wechatAvatarFileName: storeAnonymous ? "" : wechatAvatarFileName,
+      wechatHomepageFingerprint: storeAnonymous ? "" : wechatHomepageFingerprint,
+      wechatName: storeAnonymous ? "" : wechatName,
+      wechatNameSource: storeAnonymous ? "" : wechatNameSource,
       wechatStage,
-      note: isStoreVisit ? "" : $("#noteInput").value.trim()
+      note: isStoreVisit ? storeAnonymousLabel(storeResult) : $("#noteInput").value.trim()
     };
   }
 
@@ -5913,10 +6081,12 @@
   }
 
   function hasReliableContact(payload) {
+    if (storeAllowsAnonymous(payload)) return true;
     return Boolean(usablePhoneKey(payload.phone) || hasWechatHomepageEvidence(payload));
   }
 
   function findIdentityMatch(payload, options = {}) {
+    if (storeAllowsAnonymous(payload)) return null;
     const contactType = payload.contactType || "customer";
     const excludeIds = new Set([payload.id, payload.oldCustomerLogId, options.excludeLogId].filter(Boolean));
     const records = state.logs
@@ -6166,6 +6336,7 @@
     });
     unlockVisitModeButtons();
     syncCustomerTypeLock();
+    syncConditionalFieldStates();
   }
 
   function setFormEditMode(enabled, message = "", level = "warn") {
@@ -6446,7 +6617,7 @@
       selectedId: draft.oldCustomerLogId || "",
       applyFirst: false
     });
-    setSelectValue("#buildingSelect", draft.property);
+    setPropertyValue(draft.property);
     renderBuildingNumberOptions();
     setSelectValue("#buildingNumberSelect", draft.buildingNumber);
     renderUnitOptions();
@@ -6460,7 +6631,7 @@
     if (!["没有开门", "有师傅", "有业主", "师傅和业主都在", "其他情况"].includes(draft.reception)) {
       $("#receptionOtherInput").value = draft.reception || "";
     }
-    setSelectValue("#resultSelect", draft.result);
+    setRenovationResultValue(draft.result);
     setContactCategoryValue(draft.contactType || "customer", draft.customerType);
     setSelectValue("#contactLevelSelect", draft.contactLevel || contactLevels[3]);
     setSelectValue("#wechatAddedSelect", draft.wechatAdded || "没有");
@@ -6474,6 +6645,8 @@
       draft.wechatAvatarFileName ? "草稿主页截图已带出，可重新上传更新昵称" : ""
     );
     setSelectValue("#storeResultSelect", normalizeStoreVisitResult(draft.storeResult || storeVisitResultFromStage(draft.wechatStage)));
+    setSelectValue("#storeContactSelect", draft.storeContactStatus || (draft.storeAnonymous ? "未留资料" : "已留资料"));
+    syncStoreReceptionLayout({ clearHidden: false });
     setSelectValue("#wechatStageInput", normalizeCustomerFollowStage(draft.wechatStage));
     $("#noteInput").value = draft.note || "";
     renderAllUploadPreviews({
@@ -6511,6 +6684,8 @@
     setContactType(targetContactType, targetCustomerType, targetContactLevel);
     if (targetMode === "store") {
       setSelectValue("#storeResultSelect", "逛一圈就走");
+      setSelectValue("#storeContactSelect", "未留资料");
+      syncStoreReceptionLayout({ clearHidden: true });
       syncStoreVisitResultStage();
       syncCustomerTypeLock();
     }
@@ -6641,18 +6816,58 @@
     showToast("草稿已删除");
   }
 
+  function isCustomPropertySelected() {
+    return $("#buildingSelect")?.value === propertyCustomValue;
+  }
+
+  function currentPropertyValue() {
+    if (isCustomPropertySelected()) {
+      return $("#customPropertyInput")?.value.trim() || "";
+    }
+    return $("#buildingSelect")?.value || "";
+  }
+
+  function syncCustomPropertyInput() {
+    const field = $("#customPropertyField");
+    const input = $("#customPropertyInput");
+    const select = $("#buildingSelect");
+    if (!field || !input || !select) return;
+    const enabled = isCustomPropertySelected() && !select.disabled && !$("#propertyInfoSection")?.classList.contains("is-hidden");
+    field.classList.toggle("is-hidden", !isCustomPropertySelected());
+    input.disabled = !enabled;
+    input.required = enabled;
+    if (!isCustomPropertySelected()) input.value = "";
+  }
+
+  function setPropertyValue(value = "") {
+    const select = $("#buildingSelect");
+    if (!select) return;
+    const known = mockProperties.some((property) => property.name === value);
+    if (known || !value) {
+      select.value = known ? value : mockProperties[0].name;
+      $("#customPropertyInput").value = "";
+    } else {
+      select.value = propertyCustomValue;
+      $("#customPropertyInput").value = value;
+    }
+    syncCustomPropertyInput();
+    syncScrollPicker("buildingSelect");
+  }
+
   function selectedPropertyConfig() {
+    if (isCustomPropertySelected()) return { name: currentPropertyValue() || "其他楼盘", buildings: defaultBuildingNumbers, units: defaultUnits };
     return mockProperties.find((property) => property.name === $("#buildingSelect").value) || mockProperties[0];
   }
 
   function renderBuildingOptions() {
-    const current = $("#buildingSelect").value || mockProperties[0].name;
+    const current = currentPropertyValue() || $("#buildingSelect").value || mockProperties[0].name;
     $("#buildingSelect").innerHTML = mockProperties.map((property) => `
       <option value="${property.name}">${property.name}</option>
-    `).join("");
-    $("#buildingSelect").value = mockProperties.some((property) => property.name === current) ? current : mockProperties[0].name;
+    `).join("") + `<option value="${propertyCustomValue}">其他</option>`;
+    setPropertyValue(current);
     renderBuildingNumberOptions();
     renderUnitOptions();
+    syncScrollPicker("buildingSelect");
   }
 
   function renderBuildingNumberOptions() {
@@ -6682,6 +6897,41 @@
       <option value="${room}">${room}</option>
     `).join("");
     $("#roomSelect").value = rooms.includes(current) ? current : rooms[0];
+  }
+
+  function currentRenovationResultValue() {
+    if ($("#resultSelect")?.value === renovationCustomValue) {
+      return $("#customResultInput")?.value.trim() || "";
+    }
+    return $("#resultSelect")?.value || "暂不清楚";
+  }
+
+  function syncCustomResultInput() {
+    const field = $("#customResultField");
+    const input = $("#customResultInput");
+    const select = $("#resultSelect");
+    if (!field || !input || !select) return;
+    const visible = select.value === renovationCustomValue;
+    const enabled = visible && !select.disabled && !$("#siteSituationSection")?.classList.contains("is-hidden");
+    field.classList.toggle("is-hidden", !visible);
+    input.disabled = !enabled;
+    input.required = enabled;
+    if (!visible) input.value = "";
+  }
+
+  function setRenovationResultValue(value = "") {
+    const select = $("#resultSelect");
+    if (!select) return;
+    const normalized = value || "暂不清楚";
+    if (renovationStages.includes(normalized)) {
+      select.value = normalized;
+      $("#customResultInput").value = "";
+    } else {
+      select.value = renovationCustomValue;
+      $("#customResultInput").value = normalized;
+    }
+    syncCustomResultInput();
+    syncScrollPicker("resultSelect");
   }
 
   function renderSettings() {
@@ -7390,10 +7640,23 @@
       });
     });
     $("#buildingSelect").addEventListener("change", () => {
+      syncCustomPropertyInput();
       renderBuildingNumberOptions();
       renderUnitOptions();
+      syncScrollPicker("buildingSelect");
+    });
+    $("#customPropertyInput").addEventListener("input", () => {
+      syncScrollPicker("buildingSelect");
+      refreshIdentityCheckFromForm();
     });
     $("#receptionSelect").addEventListener("change", syncDurationWithReception);
+    $("#resultSelect").addEventListener("change", () => {
+      syncCustomResultInput();
+      syncScrollPicker("resultSelect");
+    });
+    $("#customResultInput").addEventListener("input", () => {
+      syncScrollPicker("resultSelect");
+    });
     $("#wechatAddedSelect").addEventListener("change", () => {
       if ($("#wechatAddedSelect").value === "没有" && syncWechatAddedByProof(activeDraft() || {})) {
         showToast("已有微信截图，系统自动改为“有”");
@@ -7404,6 +7667,8 @@
       if (!isStoreVisitMode()) return;
       const result = normalizeStoreVisitResult($("#storeResultSelect").value);
       $("#storeResultSelect").value = result;
+      syncStoreReceptionLayout({ clearHidden: true });
+      syncFormLayoutByMode();
       const stage = syncStoreVisitResultStage();
       syncCustomerTypeLock();
       if (result === "已成交") {
@@ -7411,6 +7676,11 @@
       } else if (stage === "已做过预算") {
         showToast("已记录预算客户，提交后会联动客户资料");
       }
+    });
+    $("#storeContactSelect").addEventListener("change", () => {
+      if (!isStoreVisitMode()) return;
+      syncStoreReceptionLayout({ clearHidden: true });
+      syncFormLayoutByMode();
     });
     $("#wechatStageInput").addEventListener("change", () => {
       let stage = normalizeCustomerFollowStage($("#wechatStageInput").value);
@@ -7444,6 +7714,56 @@
     $("#logForm").addEventListener("input", scheduleAutosave);
     $("#logForm").addEventListener("change", scheduleAutosave);
     $("#logForm").addEventListener("click", (event) => {
+      const scrollPickerTrigger = event.target.closest("[data-scroll-picker]");
+      if (scrollPickerTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!formEditMode && !isFormLockExempt(scrollPickerTrigger)) {
+          promptStartFormEdit();
+          return;
+        }
+        toggleScrollPicker(scrollPickerTrigger.dataset.scrollPicker);
+        return;
+      }
+
+      const scrollPickerOption = event.target.closest("[data-scroll-option]");
+      if (scrollPickerOption) {
+        event.preventDefault();
+        event.stopPropagation();
+        chooseScrollPickerOption(scrollPickerOption.dataset.scrollOption, scrollPickerOption.dataset.scrollValue);
+        return;
+      }
+
+      const storeResultButton = event.target.closest("[data-store-result]");
+      if (storeResultButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!formEditMode) {
+          promptStartFormEdit();
+          return;
+        }
+        $("#storeResultSelect").value = storeResultButton.dataset.storeResult;
+        syncStoreReceptionLayout({ clearHidden: true });
+        syncFormLayoutByMode();
+        scheduleAutosave();
+        return;
+      }
+
+      const storeContactButton = event.target.closest("[data-store-contact]");
+      if (storeContactButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!formEditMode) {
+          promptStartFormEdit();
+          return;
+        }
+        $("#storeContactSelect").value = storeContactButton.dataset.storeContact;
+        syncStoreReceptionLayout({ clearHidden: true });
+        syncFormLayoutByMode();
+        scheduleAutosave();
+        return;
+      }
+
       const deleteDraftButton = event.target.closest("[data-delete-draft]");
       if (deleteDraftButton) {
         event.preventDefault();
@@ -7994,6 +8314,8 @@
         contactType: payload.contactType,
         employeeId: payload.employeeId,
         storeResult: payload.storeResult,
+        storeContactStatus: payload.storeContactStatus,
+        storeAnonymous: payload.storeAnonymous,
         timestamp: new Date().toISOString(),
         property: payload.property,
         buildingNumber: payload.buildingNumber,
@@ -8092,6 +8414,12 @@
       if (suppressAutosave) return;
       event.preventDefault();
       clearCurrentForm();
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".scroll-picker")) {
+        closeScrollPickers();
+      }
     });
 
     $("#employeeBoard")?.addEventListener("click", (event) => {
@@ -8195,6 +8523,9 @@
     $("#workDate").valueAsDate = today;
     renderBuildingOptions();
     renderRoomOptions();
+    setRenovationResultValue($("#resultSelect")?.value || "拆改");
+    syncStoreReceptionLayout({ clearHidden: false });
+    syncAllScrollPickers();
     bindEvents();
     renderAllUploadPreviews();
     syncAllCollapsibleSections();

@@ -270,6 +270,11 @@ button {
   border-color: #f3c783;
 }
 
+.form-section-store {
+  background: #f7fbff;
+  border-color: #9ec5fe;
+}
+
 .form-section-closed {
   background: #f7fbf8;
   border-color: #a7dfbf;
@@ -780,15 +785,178 @@ textarea:focus {
   box-shadow: 0 7px 16px rgba(37, 99, 235, 0.26);
 }
 
-.store-result-row {
-  grid-template-columns: 1fr;
+.native-state-select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.store-result-row select {
-  color: #0f3d75;
-  border-color: #93c5fd;
-  background: #eff6ff;
+.store-result-note {
+  color: #4b6b91;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.store-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.store-result-grid button,
+.store-contact-grid button {
+  min-height: 58px;
+  border: 1px solid #c7d7ed;
+  border-radius: 8px;
+  padding: 9px 8px;
+  display: grid;
+  gap: 3px;
+  background: #fff;
+  color: #27435f;
+  text-align: left;
+}
+
+.store-result-grid button.active,
+.store-contact-grid button.active {
+  color: #fff;
+  border-color: var(--blue);
+  background: var(--blue);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+}
+
+.store-result-grid strong {
+  font-size: 15px;
+}
+
+.store-result-grid span {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.store-contact-choice {
+  display: grid;
+  gap: 7px;
+}
+
+.store-contact-choice > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.store-contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.store-contact-grid button {
+  min-height: 44px;
+  place-items: center;
+  text-align: center;
+  font-size: 14px;
   font-weight: 900;
+}
+
+.scroll-picker {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+
+.scroll-picker-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scroll-picker-trigger {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid #cbd7e6;
+  border-radius: 8px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ink);
+  background: #fff;
+  text-align: left;
+}
+
+.scroll-picker-trigger:focus-visible {
+  border-color: var(--blue);
+  outline: 3px solid rgba(37, 99, 235, 0.18);
+}
+
+.scroll-picker-trigger b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.scroll-picker-trigger i {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 20px;
+}
+
+.scroll-picker-trigger.is-disabled {
+  color: #94a3b8;
+  background: #f8fafc;
+}
+
+.scroll-picker-menu {
+  position: absolute;
+  z-index: 15;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  max-height: 238px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #cbd7e6;
+  border-radius: 8px;
+  padding: 7px;
+  display: grid;
+  gap: 6px;
+  background: #fff;
+  box-shadow: 0 18px 36px rgba(30, 41, 59, 0.18);
+}
+
+.scroll-picker-menu button {
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #29415f;
+  background: #f8fafc;
+  text-align: left;
+  font-weight: 800;
+}
+
+.scroll-picker-menu button.active {
+  color: #fff;
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.custom-property-field,
+.custom-result-field {
+  margin-top: -2px;
+}
+
+.custom-result-field {
+  grid-column: 1 / -1;
 }
 
 .contact-level-row {
@@ -3399,6 +3567,36 @@ body.modal-open {
   body[data-role="employee"] .visit-mode button {
     min-height: 36px;
     padding: 6px 10px;
+  }
+
+  body[data-role="employee"] .store-result-grid {
+    gap: 7px;
+  }
+
+  body[data-role="employee"] .store-result-grid button {
+    min-height: 54px;
+    padding: 8px 7px;
+  }
+
+  body[data-role="employee"] .store-result-grid strong {
+    font-size: 14px;
+  }
+
+  body[data-role="employee"] .store-result-grid span {
+    font-size: 11px;
+  }
+
+  body[data-role="employee"] .store-contact-grid button {
+    min-height: 42px;
+  }
+
+  body[data-role="employee"] .scroll-picker-trigger {
+    min-height: 42px;
+    padding: 0 10px;
+  }
+
+  body[data-role="employee"] .scroll-picker-menu {
+    max-height: 220px;
   }
 
   body[data-role="employee"] .cascade-trigger {

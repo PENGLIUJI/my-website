@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>拓客管家 | 家具外勤管理系统</title>
-    <link rel="stylesheet" href="./styles.css?v=20260816-no-mode-jump" />
+    <link rel="stylesheet" href="./styles.css?v=20260816-store-picker" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -201,6 +201,49 @@
                   <button type="button" data-contact-type="master">师傅</button>
                   <button type="button" data-contact-type="channel">异业和渠道</button>
                 </div>
+                <section class="form-section form-section-store is-hidden" id="storeReceptionSection">
+                  <div class="form-section-head">
+                    <strong>门店接待结果</strong>
+                    <span class="store-result-note" id="storeResultHint">先选客户这次到店属于哪种情况</span>
+                  </div>
+                  <div class="form-section-body">
+                    <select class="native-state-select" id="storeResultSelect" aria-label="门店接待结果">
+                      <option value="逛一圈就走">逛一圈就走</option>
+                      <option value="有意向">有意向</option>
+                      <option value="做了预算，下次再来">做了预算，下次再来</option>
+                      <option value="已成交">已成交</option>
+                    </select>
+                    <div class="store-result-grid" aria-label="门店接待结果">
+                      <button class="active" type="button" data-store-result="逛一圈就走">
+                        <strong>逛一圈就走</strong>
+                        <span>不留资料，只记客流</span>
+                      </button>
+                      <button type="button" data-store-result="有意向">
+                        <strong>有意向</strong>
+                        <span>可留电话或微信</span>
+                      </button>
+                      <button type="button" data-store-result="做了预算，下次再来">
+                        <strong>做了预算</strong>
+                        <span>下次再来，优先跟进</span>
+                      </button>
+                      <button type="button" data-store-result="已成交">
+                        <strong>已成交</strong>
+                        <span>进入已成交区</span>
+                      </button>
+                    </div>
+                    <div class="store-contact-choice is-hidden" id="storeContactChoice">
+                      <span>客户有没有留资料</span>
+                      <select class="native-state-select" id="storeContactSelect" aria-label="客户有没有留资料">
+                        <option value="未留资料">未留资料</option>
+                        <option value="已留资料">已留资料</option>
+                      </select>
+                      <div class="store-contact-grid">
+                        <button class="active" type="button" data-store-contact="未留资料">没留资料</button>
+                        <button type="button" data-store-contact="已留资料">已留电话/微信</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
                 <section class="form-section form-section-return is-hidden" id="oldCustomerSection">
                   <div class="form-section-head">
                     <strong>老客户回访</strong>
@@ -361,7 +404,18 @@
                   <div class="form-section-body" id="propertyInfoBody">
                     <label class="field">
                       <span>楼盘 / 小区 / 写字楼</span>
-                      <select id="buildingSelect" required></select>
+                      <div class="scroll-picker" data-picker-root="buildingSelect">
+                        <select class="scroll-picker-native" id="buildingSelect" required></select>
+                        <button class="scroll-picker-trigger" type="button" data-scroll-picker="buildingSelect" aria-expanded="false">
+                          <b id="buildingSelectPickerText">请选择楼盘</b>
+                          <i>⌄</i>
+                        </button>
+                        <div class="scroll-picker-menu is-hidden" id="buildingSelectPickerMenu"></div>
+                      </div>
+                    </label>
+                    <label class="field custom-property-field is-hidden" id="customPropertyField">
+                      <span>手动填写楼盘 / 小区 / 写字楼</span>
+                      <input id="customPropertyInput" type="text" placeholder="例如：客户说的小区名" disabled />
                     </label>
                     <div class="form-row" id="propertyBuildingUnitRow">
                       <label class="field">
@@ -376,7 +430,7 @@
                   </div>
                 </section>
 
-                <section class="form-section form-section-customer">
+                <section class="form-section form-section-customer" id="customerInfoSection">
                   <div class="form-section-head">
                     <strong id="contactSectionTitle">客户信息</strong>
                     <button class="section-toggle" type="button" data-section-toggle="customerInfoBody" aria-expanded="true">
@@ -442,17 +496,6 @@
                       </div>
                       <div class="field-status" id="wechatAvatarStatus">未上传</div>
                     </div>
-                    <div class="form-row store-result-row is-hidden" id="storeResultSection">
-                      <label class="field">
-                        <span>门店接待结果</span>
-                        <select id="storeResultSelect">
-                          <option value="逛一圈就走">逛一圈就走</option>
-                          <option value="有意向">有意向</option>
-                          <option value="做了预算，下次再来">做了预算，下次再来</option>
-                          <option value="已成交">已成交</option>
-                        </select>
-                      </label>
-                    </div>
                   </div>
                 </section>
 
@@ -478,7 +521,8 @@
                       </label>
                       <label class="field">
                         <span>装修进度</span>
-                        <select id="resultSelect" required>
+                        <div class="scroll-picker" data-picker-root="resultSelect">
+                          <select class="scroll-picker-native" id="resultSelect" required>
                           <option value="拆改">拆改</option>
                           <option value="水电">水电</option>
                           <option value="瓷砖">瓷砖</option>
@@ -489,7 +533,18 @@
                           <option value="软装进场">软装进场</option>
                           <option value="已入住">已入住</option>
                           <option value="暂不清楚">暂不清楚</option>
-                        </select>
+                          <option value="__custom_result__">其他</option>
+                          </select>
+                          <button class="scroll-picker-trigger" type="button" data-scroll-picker="resultSelect" aria-expanded="false">
+                            <b id="resultSelectPickerText">请选择装修进度</b>
+                            <i>⌄</i>
+                          </button>
+                          <div class="scroll-picker-menu is-hidden" id="resultSelectPickerMenu"></div>
+                        </div>
+                      </label>
+                      <label class="field custom-result-field is-hidden" id="customResultField">
+                        <span>手动填写装修进度</span>
+                        <input id="customResultInput" type="text" placeholder="例如：刚量房、正在找设计" disabled />
                       </label>
                     </div>
                     <div class="form-row site-extra-row">
@@ -789,6 +844,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260816-no-mode-jump"></script>
+    <script src="./app.js?v=20260816-store-picker"></script>
   </body>
 </html>
