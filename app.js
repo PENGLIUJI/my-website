@@ -4,8 +4,9 @@
 
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
-  const defaultBuildingNumbers = ["1栋", "2栋", "3栋", "4栋", "5栋", "6栋", "7栋", "8栋", "9栋", "10栋", "11栋", "12栋"];
-  const defaultUnits = ["1单元", "2单元", "3单元", "4单元"];
+  const noneOption = "无";
+  const defaultBuildingNumbers = [noneOption, "1栋", "2栋", "3栋", "4栋", "5栋", "6栋", "7栋", "8栋", "9栋", "10栋", "11栋", "12栋"];
+  const defaultUnits = [noneOption, "1单元", "2单元", "3单元", "4单元"];
   const renovationStages = ["拆改", "水电", "瓷砖", "木工", "油漆", "吊顶", "定制安装", "软装进场", "已入住", "暂不清楚"];
   const propertyCustomValue = "__custom_property__";
   const renovationCustomValue = "__custom_result__";
@@ -130,12 +131,27 @@
     return match ? match[1] : "";
   }
 
+  function isNoneOption(value) {
+    return String(value || "").trim() === noneOption;
+  }
+
+  function normalizeChoiceList(values = []) {
+    return [noneOption, ...values.filter((value) => value && !isNoneOption(value))]
+      .filter((value, index, list) => list.indexOf(value) === index);
+  }
+
+  function formatBuildingUnit(buildingNumber, unit) {
+    return [buildingNumber, unit]
+      .filter((value) => value && !isNoneOption(value))
+      .join("");
+  }
+
   function displayBuilding(log) {
     if (!isCustomerContactLog(log) && !log.property && !log.buildingNumber && !log.unit && !log.buildingBlock && !log.building) {
       return "资源登记";
     }
     if (log.property || log.buildingNumber || log.unit || log.buildingBlock) {
-      const buildingPart = [log.buildingNumber || log.buildingBlock, log.unit].filter(Boolean).join("");
+      const buildingPart = formatBuildingUnit(log.buildingNumber || log.buildingBlock, log.unit);
       return [log.property, buildingPart].filter(Boolean).join(" ");
     }
     return log.building || "未选择楼盘";
@@ -5988,8 +6004,9 @@
     const contactType = isStoreVisit ? "customer" : currentContactType();
     const isCustomerContact = contactType === "customer";
     const shouldSaveProperty = isCustomerContact && (!isStoreVisit || storeNeedsPropertyInfo());
+    const buildingUnitValue = formatBuildingUnit(selectedBuildingNumber, selectedUnit);
     const locationValue = shouldSaveProperty
-      ? [selectedBuildingNumber + selectedUnit, selectedRoom].filter(Boolean).join(" ")
+      ? [buildingUnitValue, selectedRoom].filter(Boolean).join(" ")
       : "";
     const receptionValue = isCustomerContact && !isStoreVisit ? $("#receptionSelect").value : "";
     const receptionOther = $("#receptionOtherInput").value.trim();
@@ -6027,7 +6044,7 @@
       property: shouldSaveProperty ? selectedBuilding : "",
       buildingNumber: shouldSaveProperty ? selectedBuildingNumber : "",
       unit: shouldSaveProperty ? selectedUnit : "",
-      building: shouldSaveProperty ? `${selectedBuilding} ${selectedBuildingNumber}${selectedUnit}` : "",
+      building: shouldSaveProperty ? [selectedBuilding, buildingUnitValue].filter(Boolean).join(" ") : "",
       room: shouldSaveProperty ? selectedRoom : "",
       floor: shouldSaveProperty ? selectedFloor : "",
       customer: storeAnonymous ? storeAnonymousLabel(storeResult) : rawCustomerName,
@@ -6873,7 +6890,7 @@
   function renderBuildingNumberOptions() {
     const property = selectedPropertyConfig();
     const current = $("#buildingNumberSelect").value;
-    const buildings = property.buildings || defaultBuildingNumbers;
+    const buildings = normalizeChoiceList(property.buildings || defaultBuildingNumbers);
     $("#buildingNumberSelect").innerHTML = buildings.map((buildingNumber) => `
       <option value="${buildingNumber}">${buildingNumber}</option>
     `).join("");
@@ -6883,7 +6900,7 @@
   function renderUnitOptions() {
     const property = selectedPropertyConfig();
     const current = $("#unitSelect").value;
-    const units = property.units || defaultUnits;
+    const units = normalizeChoiceList(property.units || defaultUnits);
     $("#unitSelect").innerHTML = units.map((unit) => `
       <option value="${unit}">${unit}</option>
     `).join("");
