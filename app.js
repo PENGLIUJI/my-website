@@ -2812,13 +2812,16 @@
   function switchVisitModeFromUser(mode) {
     const nextMode = resettableVisitMode(mode);
     const previousMode = currentVisitMode();
+    const scrollPosition = currentWindowScrollPosition();
     if (nextMode === previousMode) {
       setVisitMode(nextMode);
+      restoreWindowScroll(scrollPosition);
       return;
     }
 
     if (!["new", "return", "store"].includes(nextMode)) {
       setVisitMode(nextMode);
+      restoreWindowScroll(scrollPosition);
       return;
     }
 
@@ -2836,7 +2839,9 @@
       {
         editing: false,
         level: shouldSaveCurrent ? "success" : "warn",
-        mode: nextMode
+        mode: nextMode,
+        preserveScroll: true,
+        scrollPosition
       }
     );
     if (shouldSaveCurrent) showToast(`已保存${previousLabel}草稿`);
