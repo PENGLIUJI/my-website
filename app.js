@@ -5232,20 +5232,12 @@
     return "";
   }
 
-  function customerTypeIndex(value) {
-    const index = customerTypes.indexOf(value);
-    return index === -1 ? customerTypes.length - 1 : index;
-  }
-
   function shouldLockCustomerTypeToA() {
     if (!contactTypeUsesPriority()) return false;
     if (isStoreVisitMode()) return true;
     if (isReturnVisitMode() && selectedReturnCustomerSourceKind() === "store") return true;
     if (shouldForceCustomerTypeA($("#wechatStageInput")?.value)) return true;
-    const selectedLog = selectedOldCustomerLog();
-    if (isReturnVisitMode() && selectedLog?.customerType === "A类") return true;
-    const draft = activeDraft();
-    return Boolean(isReturnVisitMode() && draft?.customerType === "A类");
+    return false;
   }
 
   function syncCustomerTypeLock() {
@@ -5260,10 +5252,7 @@
       select.value = "A类";
     }
     Array.from(select.options).forEach((option) => {
-      const optionTypeIndex = customerTypeIndex(option.value);
-      const currentTypeIndex = customerTypeIndex(select.value || "D类");
-      const lowerThanCurrent = usesPriority && isReturnVisitMode() && sourceKind === "new" && optionTypeIndex > currentTypeIndex;
-      option.disabled = (locked && option.value !== "A类") || lowerThanCurrent;
+      option.disabled = locked && option.value !== "A类";
     });
     if (locked && Array.from(select.options).some((option) => option.value === "A类")) {
       select.value = "A类";
@@ -5274,7 +5263,7 @@
       readonly.textContent = select.value || "A类";
       readonly.classList.toggle("is-hidden", !hideSelectForStoreReturn);
     }
-    select.title = hideSelectForStoreReturn ? "门店接待转入客户固定为A类" : locked ? "客户阶段已升为A类，不能再降级" : (sourceKind === "new" ? "新增拜访转入客户只能升，不能降" : "");
+    select.title = hideSelectForStoreReturn ? "门店接待转入客户固定为A类" : "";
   }
 
   function syncChannelIndustryInput() {
