@@ -2153,7 +2153,7 @@
   }
 
   function storeNeedsPropertyInfo() {
-    return currentStoreResult() === "已成交";
+    return storeNeedsCustomerInfo();
   }
 
   function storeAllowsAnonymous(payload = {}) {
@@ -5347,8 +5347,8 @@
 
     $("#customerInput").required = !customerHidden && (!isStore || currentStoreResult() === "已成交");
     $("#phoneInput").required = false;
-    $("#buildingSelect").required = !propertyHidden && !isStore;
-    $("#roomSelect").required = !propertyHidden && !isStore;
+    $("#buildingSelect").required = !propertyHidden;
+    $("#roomSelect").required = !propertyHidden;
     $("#resultSelect").required = !siteHidden;
     syncCustomPropertyInput();
     syncCustomResultInput();
