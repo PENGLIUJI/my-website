@@ -1779,9 +1779,12 @@ button.tag.draft-tag:focus-visible {
   gap: 12px;
 }
 
-.form-row.contact-detail-grid,
 .form-row.wechat-quick-row {
   grid-template-columns: minmax(112px, 0.72fr) minmax(0, 1.28fr);
+}
+
+.form-row.contact-detail-grid {
+  grid-template-columns: minmax(112px, 0.72fr) minmax(0, 1fr) minmax(118px, 0.86fr);
 }
 
 .contact-detail-grid .contact-type-field {
@@ -1797,15 +1800,20 @@ button.tag.draft-tag:focus-visible {
 }
 
 .contact-detail-grid .contact-name-field {
-  order: 4;
+  order: 2;
+}
+
+.contact-detail-grid .customer-referral-field {
+  order: 3;
 }
 
 .contact-detail-grid .room-field {
-  order: 5;
+  order: 4;
 }
 
 .contact-detail-grid .contact-phone-field {
-  order: 6;
+  order: 5;
+  grid-column: span 2;
 }
 
 .contact-detail-grid.resource-mode .contact-name-field {
@@ -1814,6 +1822,14 @@ button.tag.draft-tag:focus-visible {
 
 .contact-detail-grid.resource-mode .contact-phone-field {
   order: 5;
+  grid-column: auto;
+}
+
+.customer-referral-field select {
+  border-color: #f87171;
+  background: #fff7ed;
+  color: #9f1239;
+  font-weight: 900;
 }
 
 .form-row.site-main-row,
@@ -3460,7 +3476,10 @@ body.modal-open {
     grid-template-columns: 1fr;
   }
 
-  .form-row.contact-detail-grid,
+  .form-row.contact-detail-grid {
+    grid-template-columns: minmax(96px, 0.64fr) minmax(0, 1fr) minmax(112px, 0.86fr);
+  }
+
   .form-row.wechat-quick-row {
     grid-template-columns: minmax(96px, 0.72fr) minmax(0, 1.28fr);
   }
@@ -3571,7 +3590,10 @@ body.modal-open {
     gap: 8px;
   }
 
-  body[data-role="employee"] .form-row.contact-detail-grid,
+  body[data-role="employee"] .form-row.contact-detail-grid {
+    grid-template-columns: minmax(88px, 0.62fr) minmax(0, 1fr) minmax(104px, 0.86fr);
+  }
+
   body[data-role="employee"] .form-row.wechat-quick-row {
     grid-template-columns: minmax(88px, 0.64fr) minmax(0, 1.36fr);
   }

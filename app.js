@@ -11,6 +11,7 @@
   const propertyCustomValue = "__custom_property__";
   const renovationCustomValue = "__custom_result__";
   const customerTypes = ["A类", "B类", "C类", "D类"];
+  const customerReferralOptions = ["有介绍客户", "无"];
   const customerFollowStages = ["没有到过店", "已到过店", "已做过预算", "已成交"];
   const storeVisitResults = ["逛一圈就走", "有意向", "做了预算，下次再来", "已成交"];
   const forceAStages = ["已到过店", "已做过预算", "已成交"];
@@ -532,6 +533,10 @@
 
   function normalizeContactType(value) {
     return ["master", "channel"].includes(value) ? value : "customer";
+  }
+
+  function normalizeCustomerReferral(value) {
+    return customerReferralOptions.includes(value) ? value : "无";
   }
 
   function isCustomerContactLog(log) {
@@ -1777,6 +1782,7 @@
       if (isCustomerDraft && (!draft.customerType || !customerTypes.includes(draft.customerType))) {
         draft.customerType = "D类";
       }
+      draft.customerReferral = isCustomerDraft ? normalizeCustomerReferral(draft.customerReferral) : "";
       if (!isCustomerDraft) {
         if (draft.contactType === "channel") {
           draft.customerType = normalizeChannelIndustry(draft.customerType) || "其他行业";
@@ -1863,6 +1869,7 @@
           log.customerType = "D类";
         }
       }
+      log.customerReferral = isCustomerLog ? normalizeCustomerReferral(log.customerReferral) : "";
       if (!isCustomerLog) {
         if (log.contactType === "channel") {
           log.customerType = normalizeChannelIndustry(log.customerType) || "其他行业";
@@ -2836,6 +2843,7 @@
     $("#customerInput").value = log.customer || "";
     $("#phoneInput").value = log.phone || "";
     setContactCategoryValue(type, log.customerType || (isCustomer ? "D类" : ""));
+    setSelectValue("#customerReferralSelect", isCustomer ? normalizeCustomerReferral(log.customerReferral) : "无");
     setSelectValue("#contactLevelSelect", log.contactLevel || contactLevels[3]);
     setSelectValue("#wechatAddedSelect", displayWechatAdded(log));
     $("#wechatNameInput").value = log.wechatName || log.wechatProof?.customerWechat || "";
@@ -5398,6 +5406,7 @@
     $("#siteSituationSection")?.classList.toggle("is-hidden", isLifecycleView || isStore || !isCustomer);
     $("#proofInfoSection")?.classList.toggle("is-hidden", isLifecycleView || isStore);
     $("#contactLevelSection")?.classList.toggle("is-hidden", isCustomer);
+    $("#customerReferralField")?.classList.toggle("is-hidden", !isCustomer);
     $("#customerFollowStageField")?.classList.toggle("is-hidden", !isReturn);
     $("#propertyInfoSection")?.classList.toggle("is-hidden", isLifecycleView || isReturn || !isCustomer || (isStore && !storeNeedsPropertyInfo()));
     $("#customerInfoSection")?.classList.toggle("is-hidden", isLifecycleView || (isStore && !storeNeedsCustomerInfo()));
@@ -6061,6 +6070,7 @@
     const selectedCustomerType = currentContactCategoryValue(contactType);
     const shouldUseAType = isStoreVisit || (contactTypeUsesPriority(contactType) && (shouldForceCustomerTypeA(wechatStage) || shouldLockCustomerTypeToA()));
     const finalCustomerType = shouldUseAType ? "A类" : selectedCustomerType;
+    const customerReferral = !storeAnonymous && isCustomerContact ? normalizeCustomerReferral($("#customerReferralSelect")?.value) : "";
 
     return {
       visitType: currentVisitModeLabel(),
@@ -6082,6 +6092,7 @@
       receptionOther: isCustomerContact && !isStoreVisit ? receptionOther : "",
       result: isStoreVisit ? "暂不清楚" : (isCustomerContact ? (currentRenovationResultValue() || "暂不清楚") : "暂不清楚"),
       customerType: finalCustomerType,
+      customerReferral,
       contactLevel: isCustomerContact ? "" : ($("#contactLevelSelect").value || contactLevels[3]),
       wechatAdded: storeAnonymous ? "没有" : wechatAdded,
       location: locationValue,
@@ -6683,6 +6694,7 @@
     }
     setRenovationResultValue(draft.result);
     setContactCategoryValue(draft.contactType || "customer", draft.customerType);
+    setSelectValue("#customerReferralSelect", normalizeContactType(draft.contactType) === "customer" ? normalizeCustomerReferral(draft.customerReferral) : "无");
     setSelectValue("#contactLevelSelect", draft.contactLevel || contactLevels[3]);
     setSelectValue("#wechatAddedSelect", draft.wechatAdded || "没有");
     setSelectValue("#durationInput", String(draft.duration ?? 5));
@@ -7538,6 +7550,7 @@
       ["customer", submittedLog.customer],
       ["phone", submittedLog.phone],
       ["customerType", submittedLog.customerType],
+      ["customerReferral", submittedLog.customerReferral],
       ["contactLevel", submittedLog.contactLevel],
       ["wechatAdded", submittedLog.wechatAdded],
       ["wechatName", submittedLog.wechatName],
@@ -7578,7 +7591,7 @@
   }
 
   function exportCsv() {
-    const header = ["时间", "登记类型", "信息类型", "员工", "楼盘", "房号", "姓名", "电话", "现场情况/等级", "装修进度", "分类", "是否添加微信", "定位", "照片", "停留分钟", "纪要"];
+    const header = ["时间", "登记类型", "信息类型", "员工", "楼盘", "房号", "姓名", "电话", "现场情况/等级", "装修进度", "分类", "转介绍客户", "是否添加微信", "定位", "照片", "停留分钟", "纪要"];
     const rows = logsForSelectedDate()
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
       .map((log) => {
@@ -7595,6 +7608,7 @@
           displayContactLevel(log) || log.reception || "",
           log.result,
           displayCustomerType(log),
+          isCustomerContactLog(log) ? normalizeCustomerReferral(log.customerReferral) : "",
           displayWechatAdded(log),
           log.location || "",
           log.photos || 0,
@@ -8375,6 +8389,7 @@
         receptionOther: payload.receptionOther,
         result: payload.result,
         customerType: payload.customerType,
+        customerReferral: payload.customerReferral,
         contactLevel: payload.contactLevel,
         wechatAdded: payload.wechatAdded,
         wechatName: payload.wechatName,
