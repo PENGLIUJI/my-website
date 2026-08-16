@@ -2173,8 +2173,8 @@
   function customerSourceTransferText(log) {
     const source = primaryRecordForLog(log) || log;
     const visitType = source?.visitType || "";
-    if (visitType === "门店接待" || source?.storeResult) return "（客户门店接待转入）";
-    if (visitType === "新增拜访") return "（客户新增拜访转入）";
+    if (visitType === "门店接待" || source?.storeResult) return "（门店接待转入）";
+    if (visitType === "新增拜访") return "（新增拜访转入）";
     return source ? "（客户资料转入）" : "";
   }
 
