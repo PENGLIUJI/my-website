@@ -2177,8 +2177,8 @@
     $("#storeContactChoice")?.classList.toggle("is-hidden", !needsChoice);
     const hintMap = {
       "逛一圈就走": "不留资料，提交后只统计到店客流",
-      "有意向": contactStatus === "已留资料" ? "填写电话或微信，提交后进入老客户回访" : "未留资料，只记录意向客流",
-      "做了预算，下次再来": contactStatus === "已留资料" ? "预算客户会重点跟进" : "未留资料，只记录预算客流",
+      "有意向": contactStatus === "已留资料" ? "留了电话或微信，进入老客户回访区" : "未留资料，只记录意向客流",
+      "做了预算，下次再来": contactStatus === "已留资料" ? "留了电话或微信，进入老客户回访区" : "未留资料，只记录预算客流",
       "已成交": "成交客户需填写资料，提交后进入已成交区"
     };
     $("#storeResultHint").textContent = hintMap[result] || "先选客户这次到店属于哪种情况";
