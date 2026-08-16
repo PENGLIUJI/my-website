@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>拓客管家 | 家具外勤管理系统</title>
-    <link rel="stylesheet" href="./styles.css?v=20260816-source-short" />
+    <link rel="stylesheet" href="./styles.css?v=20260816-room-input" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -471,7 +471,7 @@
                       </label>
                       <label class="field room-field" id="customerRoomField">
                         <span>房号</span>
-                        <select id="roomSelect" required></select>
+                        <input id="roomSelect" type="text" placeholder="例如：101室、A101、3号铺" required />
                       </label>
                       <label class="field contact-phone-field" id="contactPhoneField">
                         <span id="contactPhoneLabel">客户电话</span>
@@ -847,6 +847,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260816-source-short"></script>
+    <script src="./app.js?v=20260816-room-input"></script>
   </body>
 </html>

@@ -1769,7 +1769,7 @@
         draft.unit = defaultUnits[0];
       }
       if (isCustomerDraft && !draft.room) {
-        draft.room = buildRoomOptions()[0];
+        draft.room = "101室";
       }
       if (!draft.result || !renovationStages.includes(draft.result)) {
         draft.result = "暂不清楚";
@@ -1892,7 +1892,7 @@
         log.unit = coerceUnit(log.buildingBlock || log.building, property?.units?.[0] || defaultUnits[0]);
       }
       if (isCustomerLog && !log.room) {
-        log.room = buildRoomOptions(log.floor)[0];
+        log.room = "101室";
       }
       if (isCustomerLog) {
         log.building = displayBuilding(log);
@@ -2830,8 +2830,6 @@
       renderUnitOptions();
       ensureSelectOption("#unitSelect", log.unit || coerceUnit(log.building));
       setSelectValue("#unitSelect", log.unit || coerceUnit(log.building));
-      renderRoomOptions();
-      ensureSelectOption("#roomSelect", log.room || displayRoom(log));
       setSelectValue("#roomSelect", log.room || displayRoom(log));
     }
 
@@ -5200,6 +5198,10 @@
   function setSelectValue(selector, value) {
     const element = $(selector);
     if (!element || value === undefined || value === null) return;
+    if (element.tagName !== "SELECT") {
+      element.value = value;
+      return;
+    }
     const hasOption = Array.from(element.options).some((option) => option.value === value);
     if (hasOption) element.value = value;
   }
@@ -6939,12 +6941,9 @@
   }
 
   function renderRoomOptions() {
-    const rooms = buildRoomOptions();
-    const current = $("#roomSelect").value;
-    $("#roomSelect").innerHTML = rooms.map((room) => `
-      <option value="${room}">${room}</option>
-    `).join("");
-    $("#roomSelect").value = rooms.includes(current) ? current : rooms[0];
+    const input = $("#roomSelect");
+    if (!input) return;
+    if (!input.value) input.value = "101室";
   }
 
   function currentRenovationResultValue() {
