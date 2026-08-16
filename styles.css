@@ -1051,6 +1051,92 @@ button.badge:focus-visible {
   background: var(--amber-soft);
 }
 
+.identity-check-panel {
+  border: 1px solid #f3c783;
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+  background: #fff7ed;
+}
+
+.identity-check-panel.is-hidden {
+  display: none;
+}
+
+.identity-check-panel.info {
+  border-color: #8cc6f7;
+  background: #eff8ff;
+}
+
+.identity-check-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.identity-check-copy strong {
+  color: #7c2d12;
+  font-size: 15px;
+}
+
+.identity-check-panel.info .identity-check-copy strong {
+  color: #0b5c9f;
+}
+
+.identity-check-copy span {
+  color: #5d4b35;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.identity-check-copy small {
+  color: #8a5a19;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.identity-check-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.identity-check-actions .button {
+  min-height: 42px;
+  padding: 8px 6px;
+  font-size: 13px;
+}
+
+.identity-check-actions .button.primary {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+
+.identity-check-actions .button.secondary {
+  border-color: #e16f2b;
+  background: #fff;
+  color: #a44812;
+}
+
+.identity-check-actions .button.draft {
+  border-color: #8cc6f7;
+  background: #fff;
+  color: #0b5c9f;
+}
+
+.identity-check-link {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #8cc6f7;
+  border-radius: 8px;
+  color: #0b5c9f;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
 .form-edit-gate {
   border: 1px solid #f3c783;
   border-radius: 8px;
@@ -3339,6 +3425,29 @@ body.modal-open {
   body[data-role="employee"] #wechatAvatarStatus {
     min-height: 46px;
     font-size: 12px;
+  }
+
+  body[data-role="employee"] .identity-check-panel {
+    padding: 9px;
+    gap: 8px;
+  }
+
+  body[data-role="employee"] .identity-check-copy strong {
+    font-size: 15px;
+  }
+
+  body[data-role="employee"] .identity-check-copy span {
+    font-size: 12px;
+  }
+
+  body[data-role="employee"] .identity-check-actions {
+    grid-template-columns: 1fr;
+  }
+
+  body[data-role="employee"] .identity-check-actions .button,
+  body[data-role="employee"] .identity-check-link {
+    min-height: 44px;
+    font-size: 14px;
   }
 
   body[data-role="employee"] .proof-upload-stack {

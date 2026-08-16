@@ -228,6 +228,27 @@
     return String(value || "").trim().replace(/\s+/g, "").toLowerCase();
   }
 
+  function wechatHomepageKey(record) {
+    const fingerprint = record?.wechatHomepageFingerprint || record?.wechatProof?.homepageFingerprint || "";
+    if (fingerprint) return `homepage:${normalizeIdentityText(fingerprint)}`;
+    const avatarName = record?.wechatAvatarFileName || record?.wechatProof?.avatarFileName || "";
+    return avatarName ? `avatar-file:${normalizeIdentityText(avatarName)}` : "";
+  }
+
+  function hasWechatHomepageEvidence(record) {
+    return Boolean(
+      record?.wechatHomepageFingerprint
+      || record?.wechatAvatarFileName
+      || record?.wechatProof?.homepageFingerprint
+      || record?.wechatProof?.avatarFileName
+    );
+  }
+
+  function usablePhoneKey(value) {
+    const phone = normalizePhone(value);
+    return phone.length >= 5 ? phone : "";
+  }
+
   function customerAddressKey(record) {
     const building = normalizeIdentityText(record?.building || displayBuilding(record || {}));
     const room = normalizeIdentityText(record?.room || displayRoom(record || {}));
@@ -238,13 +259,34 @@
   }
 
   function customerIdentityMatchReason(source, target) {
-    const sourcePhone = normalizePhone(source?.phone);
-    const targetPhone = normalizePhone(target?.phone);
-    if (sourcePhone.length >= 7 && targetPhone.length >= 7 && sourcePhone === targetPhone) return "电话相同";
     const sourceAddress = customerAddressKey(source);
     const targetAddress = customerAddressKey(target);
     if (sourceAddress && targetAddress && sourceAddress === targetAddress) return "房号相同";
+    const sourcePhone = usablePhoneKey(source?.phone);
+    const targetPhone = usablePhoneKey(target?.phone);
+    if (sourcePhone && targetPhone && sourcePhone === targetPhone) return "电话相同";
+    const sourceWechat = wechatHomepageKey(source);
+    const targetWechat = wechatHomepageKey(target);
+    if (sourceWechat && targetWechat && sourceWechat === targetWechat) return "微信主页相同";
     return "";
+  }
+
+  function resourceIdentityMatchReason(source, target) {
+    const sourceType = source?.contactType || "customer";
+    const targetType = target?.contactType || "customer";
+    if (!["master", "channel"].includes(sourceType) || sourceType !== targetType) return "";
+    const sourcePhone = usablePhoneKey(source?.phone);
+    const targetPhone = usablePhoneKey(target?.phone);
+    if (sourcePhone && targetPhone && sourcePhone === targetPhone) return "电话相同";
+    const sourceWechat = wechatHomepageKey(source);
+    const targetWechat = wechatHomepageKey(target);
+    if (sourceWechat && targetWechat && sourceWechat === targetWechat) return "微信主页相同";
+    return "";
+  }
+
+  function primaryRecordForLog(log) {
+    const sourceLog = log?.oldCustomerLogId ? getLog(log.oldCustomerLogId) : null;
+    return sourceLog || log;
   }
 
   function priorityFromContactLevel(level) {
@@ -1946,6 +1988,7 @@
   let formHasUserChanges = false;
   let formTouchedAddress = false;
   let avatarRecognitionRunId = 0;
+  let wechatHomepageFingerprintRunId = 0;
   let draftStatusHint = "";
   let draftStatusLevel = "";
   let draftTrayNotice = "";
@@ -1977,12 +2020,12 @@
     },
     wechatAvatarInput: {
       previewId: "wechatAvatarPreview",
-      addText: "上传头像",
+      addText: "上传主页",
       addMoreText: "重新上传",
-      label: "头像",
+      label: "主页",
       max: 1,
       multiple: false,
-      rememberedLabel: "头像"
+      rememberedLabel: "主页截图"
     }
   };
   const uploadFilesCache = new Map();
@@ -2103,30 +2146,27 @@
     return state.logs
       .slice()
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .filter((log) => {
-        if (!log.customer || log.employeeId !== currentEmployeeId()) return false;
-        if (type === "customer" && isClosedCustomerLog(log)) return false;
-        return type === "customer"
-          ? isCustomerContactLog(log)
-          : (log.contactType || "customer") === type;
-      })
-      .filter((log) => {
-        const resourceContactKey = log.phone || log.wechatName;
+      .reduce((records, log) => {
+        const primary = primaryRecordForLog(log);
+        if (!primary?.customer || primary.employeeId !== currentEmployeeId()) return records;
+        if (type === "customer" && isClosedCustomerLog(primary)) return records;
+        const typeMatches = type === "customer"
+          ? isCustomerContactLog(primary)
+          : (primary.contactType || "customer") === type;
+        if (!typeMatches) return records;
+
+        const phoneKey = usablePhoneKey(primary.phone);
+        const wechatKey = wechatHomepageKey(primary);
         const key = type === "customer"
-          ? [
-              log.phone || "",
-              log.wechatName || "",
-              log.customer || "",
-              displayBuilding(log),
-              displayRoom(log)
-            ].join("|").toLowerCase()
-          : (resourceContactKey
-              ? [type, resourceContactKey].join("|").toLowerCase()
-              : [type, log.customer || "", log.customerType || ""].join("|").toLowerCase());
-        if (seen.has(key)) return false;
+          ? (customerAddressKey(primary) || `customer-unverified|${primary.id || phoneKey || wechatKey || log.id}`)
+          : (phoneKey
+              ? `${type}|phone:${phoneKey}`
+              : (wechatKey ? `${type}|${wechatKey}` : `${type}|unverified|${primary.id || log.id}`));
+        if (seen.has(key)) return records;
         seen.add(key);
-        return true;
-      });
+        records.push(primary);
+        return records;
+      }, []);
   }
 
   function oldCustomerPickerConfig(type = currentContactType()) {
@@ -2645,17 +2685,27 @@
     setSelectValue("#resultSelect", log.result || "暂不清楚");
     setSelectValue("#wechatStageInput", normalizeCustomerFollowStage(log.wechatStage));
     setWechatAvatarStatus(
-      log.wechatAvatarFileName ? "已记录头像" : "可上传头像",
+      log.wechatAvatarFileName ? "已记录主页截图" : "可上传主页截图",
       log.wechatAvatarFileName ? "success" : "",
-      log.wechatAvatarFileName ? "老客户资料已带出，可重新上传更新昵称" : "如本次有新的微信头像截图，可上传识别"
+      log.wechatAvatarFileName ? "老客户资料已带出，可重新上传更新昵称" : "如本次有新的微信主页截图，可上传识别"
     );
     setRememberedUpload("wechatAvatarInput", log.wechatAvatarFileName ? [log.wechatAvatarFileName] : []);
+    const homepageInput = $("#wechatAvatarInput");
+    if (homepageInput) {
+      if (log.wechatHomepageFingerprint || log.wechatProof?.homepageFingerprint) {
+        homepageInput.dataset.homepageFingerprint = log.wechatHomepageFingerprint || log.wechatProof.homepageFingerprint;
+      } else {
+        delete homepageInput.dataset.homepageFingerprint;
+      }
+      delete homepageInput.dataset.homepageFingerprintPending;
+    }
     setRememberedUpload("wechatInput", normalizeFileNames(log.wechatFileNames, log.wechatFileName || log.wechatProof?.fileName));
     syncWechatAddedByProof(log);
     syncWechatNameRequirement(log);
     syncCustomerTypeLock();
     syncOldResourceFiltersFromForm({ keepSelection: true });
     setOldCustomerStatus(`${oldCustomerPickerConfig(type).statusLoadedPrefix}：${log.customer || contactTypeLabel(type)}`, "success");
+    refreshIdentityCheckFromForm();
   }
 
   function beginOldCustomerReturn(logId, options = {}) {
@@ -5386,6 +5436,15 @@
     rememberedUploadNames.photoInput = Array.isArray(remembered.photoNames) ? remembered.photoNames.filter(Boolean) : [];
     rememberedUploadNames.wechatInput = normalizeFileNames(remembered.wechatFileNames, remembered.wechatFileName);
     rememberedUploadNames.wechatAvatarInput = remembered.wechatAvatarFileName ? [remembered.wechatAvatarFileName] : [];
+    const homepageInput = $("#wechatAvatarInput");
+    if (homepageInput) {
+      if (remembered.wechatHomepageFingerprint) {
+        homepageInput.dataset.homepageFingerprint = remembered.wechatHomepageFingerprint;
+      } else {
+        delete homepageInput.dataset.homepageFingerprint;
+      }
+      delete homepageInput.dataset.homepageFingerprintPending;
+    }
     Object.keys(uploadPreviewConfig).forEach(renderUploadPreview);
     syncWechatAddedByProof(remembered);
     syncWechatNameRequirement(remembered);
@@ -5394,6 +5453,52 @@
   function setRememberedUpload(inputId, names = []) {
     rememberedUploadNames[inputId] = names.filter(Boolean);
     if (!uploadFiles(inputId).length) renderUploadPreview(inputId);
+  }
+
+  function clearWechatHomepageFingerprint() {
+    wechatHomepageFingerprintRunId += 1;
+    const input = $("#wechatAvatarInput");
+    if (!input) return;
+    delete input.dataset.homepageFingerprint;
+    delete input.dataset.homepageFingerprintPending;
+  }
+
+  async function captureWechatHomepageFingerprint(file) {
+    if (!file?.arrayBuffer || !window.crypto?.subtle) return "";
+    const bytes = await file.arrayBuffer();
+    const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  async function refreshWechatHomepageFingerprint() {
+    const input = $("#wechatAvatarInput");
+    const file = input?.files?.[0];
+    if (!input || !file) {
+      clearWechatHomepageFingerprint();
+      return "";
+    }
+
+    const runId = wechatHomepageFingerprintRunId + 1;
+    wechatHomepageFingerprintRunId = runId;
+    delete input.dataset.homepageFingerprint;
+    input.dataset.homepageFingerprintPending = "true";
+    try {
+      const fingerprint = await captureWechatHomepageFingerprint(file);
+      if (runId !== wechatHomepageFingerprintRunId || input.files?.[0] !== file) return "";
+      if (fingerprint) input.dataset.homepageFingerprint = fingerprint;
+      return fingerprint;
+    } catch (error) {
+      console.warn("微信主页截图指纹生成失败", error);
+      return "";
+    } finally {
+      if (runId === wechatHomepageFingerprintRunId) {
+        delete input.dataset.homepageFingerprintPending;
+        refreshIdentityCheckFromForm();
+        scheduleAutosave();
+      }
+    }
   }
 
   function clearAvatarRecognitionIfAutoFilled() {
@@ -5466,11 +5571,14 @@
       syncWechatNameRequirement();
     }
     if (inputId === "wechatAvatarInput") {
+      clearWechatHomepageFingerprint();
+      void refreshWechatHomepageFingerprint();
       handleWechatAvatarUpload();
     }
     if (inputId === "wechatInput" && files.length) {
       if (!$("#wechatStageInput").value) $("#wechatStageInput").value = "没有到过店";
     }
+    refreshIdentityCheckFromForm();
   }
 
   function removeUploadFile(inputId, index) {
@@ -5486,11 +5594,13 @@
 
     if (inputId === "wechatAvatarInput" && !files.length) {
       avatarRecognitionRunId += 1;
+      clearWechatHomepageFingerprint();
       setWechatAvatarStatus("未上传");
       clearAvatarRecognitionIfAutoFilled();
     }
     syncWechatNameRequirement();
     scheduleAutosave();
+    refreshIdentityCheckFromForm();
   }
 
   function cleanWechatNickname(value) {
@@ -5625,8 +5735,8 @@
     const startedName = nameInput.value.trim();
     $("#wechatAddedSelect").value = "有";
     syncWechatNameRequirement();
-    setWechatAvatarStatus("识别中", "", "正在识别微信头像/昵称截图，请稍等");
-    showToast("正在识别微信头像昵称");
+    setWechatAvatarStatus("识别中", "", "正在识别微信主页截图中的昵称，请稍等");
+    showToast("正在识别微信主页截图中的昵称");
 
     let nickname = "";
     let usedFallback = false;
@@ -5717,7 +5827,13 @@
     const existingWechatFileNames = isStoreVisit ? [] : normalizeFileNames(existingDraft.wechatFileNames, existingDraft.wechatFileName);
     const wechatFileNames = wechatFiles.length ? wechatFiles.map((file) => file.name) : existingWechatFileNames;
     const wechatFileName = wechatFileNames[0] || "";
-    const wechatAvatarFileName = wechatAvatarFile ? wechatAvatarFile.name : (existingDraft.wechatAvatarFileName || "");
+    const rememberedWechatAvatarFileName = rememberedUploadNames.wechatAvatarInput?.[0] || "";
+    const wechatAvatarFileName = wechatAvatarFile
+      ? wechatAvatarFile.name
+      : (existingDraft.wechatAvatarFileName || rememberedWechatAvatarFileName);
+    const wechatHomepageFingerprint = wechatAvatarFile
+      ? ($("#wechatAvatarInput")?.dataset.homepageFingerprint || existingDraft.wechatHomepageFingerprint || "")
+      : (existingDraft.wechatHomepageFingerprint || $("#wechatAvatarInput")?.dataset.homepageFingerprint || "");
     const wechatName = $("#wechatNameInput").value.trim();
     const storeResult = isStoreVisit ? normalizeStoreVisitResult($("#storeResultSelect")?.value) : "";
     let wechatStage = isStoreVisit
@@ -5758,6 +5874,7 @@
       wechatFileName,
       wechatFileNames,
       wechatAvatarFileName,
+      wechatHomepageFingerprint,
       wechatName,
       wechatNameSource,
       wechatStage,
@@ -5787,6 +5904,184 @@
     setDraftStatusHint(`请先填写${label}，再提交拜访日志。`, "warn");
     $("#wechatNameInput").focus();
     showToast(`请填写${label}后再提交`);
+    return false;
+  }
+
+  function hasReliableContact(payload) {
+    return Boolean(usablePhoneKey(payload.phone) || hasWechatHomepageEvidence(payload));
+  }
+
+  function findIdentityMatch(payload, options = {}) {
+    const contactType = payload.contactType || "customer";
+    const excludeIds = new Set([payload.id, payload.oldCustomerLogId, options.excludeLogId].filter(Boolean));
+    const records = state.logs
+      .filter((log) => log.employeeId === payload.employeeId)
+      .filter((log) => !excludeIds.has(log.id) && !excludeIds.has(log.oldCustomerLogId) && !excludeIds.has(primaryRecordForLog(log)?.id));
+
+    if (contactType === "customer") {
+      const addressKey = customerAddressKey(payload);
+      const addressMatch = addressKey
+        ? records.find((log) => isCustomerContactLog(primaryRecordForLog(log)) && customerAddressKey(primaryRecordForLog(log)) === addressKey)
+        : null;
+      if (addressMatch) {
+        const matchLog = primaryRecordForLog(addressMatch);
+        return {
+          level: "info",
+          mode: "auto",
+          reason: "房号相同",
+          log: matchLog,
+          title: "这户以前登记过",
+          text: "本次提交会归到原客户档案，只增加一条新的跟进记录。"
+        };
+      }
+
+      const contactMatch = records.find((log) => {
+        const matchLog = primaryRecordForLog(log);
+        if (!isCustomerContactLog(matchLog)) return false;
+        const reason = customerIdentityMatchReason(payload, matchLog);
+        return ["电话相同", "微信主页相同"].includes(reason);
+      });
+      if (contactMatch) {
+        const matchLog = primaryRecordForLog(contactMatch);
+        const reason = customerIdentityMatchReason(payload, matchLog);
+        return {
+          level: "warn",
+          mode: "block",
+          reason,
+          log: matchLog,
+          title: `${reason}，请先核对`,
+          text: `这个联系方式已在“${matchLog.customer || "老客户"} · ${displayBuilding(matchLog)} · ${displayRoom(matchLog)}”里出现。可能是同一客户，也可能是电话填错。`
+        };
+      }
+      return null;
+    }
+
+    const resourceMatch = records.find((log) => resourceIdentityMatchReason(payload, primaryRecordForLog(log)));
+    if (resourceMatch) {
+      const matchLog = primaryRecordForLog(resourceMatch);
+      const reason = resourceIdentityMatchReason(payload, matchLog);
+      return {
+        level: "info",
+        mode: "auto",
+        reason,
+        log: matchLog,
+        title: `已有这位${contactTypeLabel(contactType)}`,
+        text: `本次提交会更新原资料，不会在${contactTypeLabel(contactType)}列表里新增重复卡片。`
+      };
+    }
+    return null;
+  }
+
+  function renderIdentityCheckPanel(check = null) {
+    const panel = $("#identityCheckPanel");
+    if (!panel) return;
+    if (!check) {
+      panel.classList.add("is-hidden");
+      panel.classList.remove("warn", "info");
+      panel.innerHTML = "";
+      return;
+    }
+    const log = check.log;
+    const meta = log
+      ? [log.phone || log.wechatName || "未留联系方式", displayBuilding(log), displayRoom(log)].filter(Boolean).join(" · ")
+      : "";
+    const actionHtml = check.mode === "block"
+      ? `
+        <div class="identity-check-actions">
+          <button class="button primary" type="button" data-identity-action="use-existing" data-log-id="${escapeHtml(log.id)}">就是原资料</button>
+          <button class="button secondary" type="button" data-identity-action="edit-contact">号码填错了</button>
+          <button class="button draft" type="button" data-identity-action="save-draft">先存草稿</button>
+        </div>
+      `
+      : (log ? `<button class="identity-check-link" type="button" data-identity-action="use-existing" data-log-id="${escapeHtml(log.id)}">关联原资料</button>` : "");
+    panel.classList.remove("is-hidden", "warn", "info");
+    panel.classList.add(check.level === "warn" ? "warn" : "info");
+    panel.innerHTML = `
+      <div class="identity-check-copy">
+        <strong>${escapeHtml(check.title)}</strong>
+        <span>${escapeHtml(check.text)}</span>
+        ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
+      </div>
+      ${actionHtml}
+    `;
+  }
+
+  function refreshIdentityCheckFromForm() {
+    if (!formEditMode || isClosedVisitMode() || isAfterSaleVisitMode() || isInstalledPaidVisitMode()) {
+      renderIdentityCheckPanel(null);
+      return null;
+    }
+    const payload = readFormPayload(activeDraft() || {});
+    const check = findIdentityMatch(payload);
+    renderIdentityCheckPanel(check);
+    return check;
+  }
+
+  function linkCurrentFormToExistingRecord(logId) {
+    const log = getLog(logId);
+    if (!log) return;
+    const scrollPosition = currentWindowScrollPosition();
+    const type = log.contactType || "customer";
+
+    setContactType(type, currentContactCategoryValue(type), $("#contactLevelSelect")?.value || "", {
+      refreshReturnPicker: false
+    });
+    setVisitMode("return", {
+      selectedId: log.id,
+      applyFirst: false,
+      keepEditing: true
+    });
+    renderOldCustomerOptions(log.id);
+    $("#oldCustomerSelect").value = log.id;
+    oldCustomerCascade.customerId = log.id;
+    setOldCustomerStatus(`已关联原资料：${log.customer || contactTypeLabel(type)}。本次提交会更新原资料。`, "success");
+    setFormEditMode(true, "已关联原资料，保留当前填写内容继续补充。提交后只增加一条跟进记录。", "success");
+    formHasUserChanges = true;
+    renderIdentityCheckPanel(null);
+    scheduleAutosave();
+    restoreWindowScroll(scrollPosition);
+    showToast("已关联原资料，可继续填写");
+  }
+
+  function validateContactMethodBeforeSubmit(payload) {
+    if (hasReliableContact(payload)) return true;
+    const typeLabel = contactTypeLabel(payload.contactType);
+    renderIdentityCheckPanel({
+      level: "warn",
+      mode: "notice",
+      title: `${typeLabel}缺少联系方式`,
+      text: "请至少填写一个有效电话，或上传微信主账号页面截图。只有手写姓名/备注不能正式提交。"
+    });
+    setDraftStatusHint("请填写电话，或上传微信主账号页面截图后再提交。", "warn");
+    collapsibleSectionState.customerInfoBody = false;
+    syncCollapsibleSection("customerInfoBody");
+    $("#phoneInput")?.focus();
+    showToast("请先留电话或上传微信主页截图");
+    return false;
+  }
+
+  function validateIdentityBeforeSubmit(payload) {
+    if ($("#wechatAvatarInput")?.files?.[0] && $("#wechatAvatarInput")?.dataset.homepageFingerprintPending === "true") {
+      renderIdentityCheckPanel({
+        level: "info",
+        mode: "notice",
+        title: "正在确认微信主页截图",
+        text: "请稍等几秒，系统确认完成后会自动检查是否与旧资料重复。"
+      });
+      setDraftStatusHint("正在确认微信主页截图，请稍等后再提交。", "saving");
+      showToast("正在确认微信主页截图");
+      return false;
+    }
+    const check = findIdentityMatch(payload);
+    renderIdentityCheckPanel(check);
+    if (!check) return true;
+    if (check.mode === "auto" && check.log) {
+      payload.oldCustomerLogId = payload.oldCustomerLogId || check.log.id;
+      setDraftStatusHint(`${check.title}，本次会自动归到原资料。`, "success");
+      return true;
+    }
+    setDraftStatusHint("发现重复联系方式，请先核对后再提交。", "warn");
+    showToast("发现重复联系方式，请先核对");
     return false;
   }
 
@@ -6116,6 +6411,7 @@
     if (!draftStatusHint || draftStatusLevel === "success") {
       setDraftStatusHint("正在填写，稍后自动保存...", "saving");
     }
+    refreshIdentityCheckFromForm();
     clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(autosaveCurrentDraft, 1500);
   }
@@ -6168,9 +6464,9 @@
     $("#wechatNameInput").value = draft.wechatName || "";
     $("#wechatNameInput").dataset.source = draft.wechatNameSource || "";
     setWechatAvatarStatus(
-      draft.wechatAvatarFileName ? "已记录头像" : "未上传",
+      draft.wechatAvatarFileName ? "已记录主页截图" : "未上传",
       draft.wechatAvatarFileName ? "success" : "",
-      draft.wechatAvatarFileName ? "草稿头像已带出，可重新上传更新昵称" : ""
+      draft.wechatAvatarFileName ? "草稿主页截图已带出，可重新上传更新昵称" : ""
     );
     setSelectValue("#storeResultSelect", normalizeStoreVisitResult(draft.storeResult || storeVisitResultFromStage(draft.wechatStage)));
     setSelectValue("#wechatStageInput", normalizeCustomerFollowStage(draft.wechatStage));
@@ -6179,7 +6475,8 @@
       photoNames: draft.photoNames || [],
       wechatFileName: draft.wechatFileName || "",
       wechatFileNames: draft.wechatFileNames || [],
-      wechatAvatarFileName: draft.wechatAvatarFileName || ""
+      wechatAvatarFileName: draft.wechatAvatarFileName || "",
+      wechatHomepageFingerprint: draft.wechatHomepageFingerprint || ""
     });
     renderEmployees();
     setFormEditMode(true);
@@ -6189,6 +6486,7 @@
     setDraftOpenScrollRoom(0);
     setDraftOpenScrollRoom(previousScrollHeight - document.documentElement.scrollHeight + 16);
     restoreDraftOpenAnchor(draft.id, anchorTop, scrollPosition, listScrollTop);
+    refreshIdentityCheckFromForm();
     showToast("草稿已打开，可继续修改");
   }
 
@@ -6214,6 +6512,7 @@
     delete $("#wechatNameInput").dataset.source;
     setWechatAvatarStatus("未上传");
     renderAllUploadPreviews();
+    renderIdentityCheckPanel(null);
     renderBuildingOptions();
     renderRoomOptions();
     oldCustomerCascade = { property: "", building: "", customerId: "" };
@@ -6795,7 +7094,7 @@
               <span class="tag">客户：${escapeHtml(log.customer || "未填写")}</span>
               <span class="tag">电话：${escapeHtml(log.phone || "未留电话")}</span>
               <span class="tag">是否添加微信：${escapeHtml(displayWechatAdded(log))}</span>
-              ${proof.avatarFileName || log.wechatAvatarFileName ? `<span class="tag">头像截图：${escapeHtml(proof.avatarFileName || log.wechatAvatarFileName)}</span>` : ""}
+              ${proof.avatarFileName || log.wechatAvatarFileName ? `<span class="tag">微信主页截图：${escapeHtml(proof.avatarFileName || log.wechatAvatarFileName)}</span>` : ""}
               ${proofFileNames.map((name, index) => `<span class="tag">聊天截图${index + 1}：${escapeHtml(name)}</span>`).join("")}
               <span class="tag">楼盘：${escapeHtml(displayBuilding(log))}</span>
               <span class="tag">房号：${escapeHtml(displayRoom(log))}</span>
@@ -6922,6 +7221,48 @@
     state.rules.gapMinutes = Number($("#gapMinutes").value);
     saveState();
     renderAll();
+  }
+
+  function mergeSubmittedLogIntoSource(submittedLog) {
+    const sourceLog = submittedLog.oldCustomerLogId ? getLog(submittedLog.oldCustomerLogId) : null;
+    if (!sourceLog) return { changed: false, reason: "" };
+    const isResource = ["master", "channel"].includes(submittedLog.contactType || "customer");
+    const reason = isResource
+      ? resourceIdentityMatchReason(submittedLog, sourceLog) || "原资料回访"
+      : customerIdentityMatchReason(submittedLog, sourceLog) || "原客户回访";
+    let changed = false;
+    const overwrite = true;
+    [
+      ["customer", submittedLog.customer],
+      ["phone", submittedLog.phone],
+      ["customerType", submittedLog.customerType],
+      ["contactLevel", submittedLog.contactLevel],
+      ["wechatAdded", submittedLog.wechatAdded],
+      ["wechatName", submittedLog.wechatName],
+      ["wechatNameSource", submittedLog.wechatNameSource],
+      ["wechatFileName", submittedLog.wechatFileName],
+      ["wechatAvatarFileName", submittedLog.wechatAvatarFileName],
+      ["wechatHomepageFingerprint", submittedLog.wechatHomepageFingerprint]
+    ].forEach(([field, value]) => {
+      changed = setExistingField(sourceLog, field, value, { overwrite }) || changed;
+    });
+    const mergedWechatFiles = compactArrayValue(sourceLog.wechatFileNames, submittedLog.wechatFileNames);
+    if (mergedWechatFiles.length && JSON.stringify(sourceLog.wechatFileNames || []) !== JSON.stringify(mergedWechatFiles)) {
+      sourceLog.wechatFileNames = mergedWechatFiles;
+      changed = true;
+    }
+    if (!isResource) {
+      changed = syncAddressFields(sourceLog, submittedLog, { overwrite: false }) || changed;
+      if (submittedLog.result && submittedLog.result !== "暂不清楚" && sourceLog.result !== submittedLog.result) {
+        sourceLog.result = submittedLog.result;
+        changed = true;
+      }
+    }
+    if (changed) {
+      sourceLog.masterRecordUpdatedAt = new Date().toISOString();
+      sourceLog.masterRecordUpdateReason = reason;
+    }
+    return { changed, reason };
   }
 
   function addLog(log) {
@@ -7114,6 +7455,32 @@
           scrollPosition: currentWindowScrollPosition()
         });
         return;
+      }
+
+      const identityActionButton = event.target.closest("[data-identity-action]");
+      if (identityActionButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const action = identityActionButton.dataset.identityAction;
+        if (action === "use-existing") {
+          linkCurrentFormToExistingRecord(identityActionButton.dataset.logId);
+          return;
+        }
+        if (action === "edit-contact") {
+          const input = $("#phoneInput");
+          collapsibleSectionState.customerInfoBody = false;
+          syncCollapsibleSection("customerInfoBody");
+          setDraftStatusHint("请核对电话号码；确认无误后再提交。", "warn");
+          input?.focus();
+          input?.select();
+          showToast("请核对电话号码");
+          return;
+        }
+        if (action === "save-draft") {
+          saveCurrentDraft();
+          refreshIdentityCheckFromForm();
+          return;
+        }
       }
 
       if (!formEditMode && !isFormLockExempt(event.target)) {
@@ -7598,7 +7965,15 @@
       const submittedDraftId = activeDraftId;
       const submittedMode = editableVisitMode(currentVisitMode());
       const payload = readFormPayload(activeDraft() || {});
+      if (!validateContactMethodBeforeSubmit(payload)) {
+        suppressAutosave = false;
+        return;
+      }
       if (!validateWechatNicknameBeforeSubmit(payload)) {
+        suppressAutosave = false;
+        return;
+      }
+      if (!validateIdentityBeforeSubmit(payload)) {
         suppressAutosave = false;
         return;
       }
@@ -7632,6 +8007,7 @@
         wechatFileName: payload.wechatFileName,
         wechatFileNames: payload.wechatFileNames,
         wechatAvatarFileName: payload.wechatAvatarFileName,
+        wechatHomepageFingerprint: payload.wechatHomepageFingerprint,
         wechatNameSource: payload.wechatNameSource,
         wechatStage: payload.wechatStage,
         floor: payload.floor,
@@ -7654,6 +8030,7 @@
           fileName: payload.wechatFileName || payload.wechatAvatarFileName || "未上传截图文件",
           fileNames: payload.wechatFileNames || [],
           avatarFileName: payload.wechatAvatarFileName || "",
+          homepageFingerprint: payload.wechatHomepageFingerprint || "",
           uploadTime: submittedLog.timestamp,
           customerWechat: payload.wechatName || `${submittedLog.customer} · 微信客户`,
           stage: payload.wechatStage || submittedLog.result,
@@ -7666,6 +8043,7 @@
         };
       }
 
+      const sourceMergeResult = mergeSubmittedLogIntoSource(submittedLog);
       if (submittedDraftId) {
         state.drafts = state.drafts.filter((draft) => draft.id !== submittedDraftId);
       }
@@ -7698,6 +8076,8 @@
       });
       if (lifecycleSyncResult?.changed) {
         showToast(`${submitLabel}已提交，${lifecycleSyncResult.stage}已联动${lifecycleSyncResult.logs + lifecycleSyncResult.records}条客户资料`);
+      } else if (sourceMergeResult.changed) {
+        showToast(`${submitLabel}已提交，已更新原资料`);
       } else {
         showToast(`${submitLabel}已提交并锁定，员工端不能再修改`);
       }
