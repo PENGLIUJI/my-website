@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>拓客管家 | 家具外勤管理系统</title>
-    <link rel="stylesheet" href="./styles.css?v=20260816-draft-scope" />
+    <link rel="stylesheet" href="./styles.css?v=20260816-customer-source" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -432,7 +432,10 @@
 
                 <section class="form-section form-section-customer" id="customerInfoSection">
                   <div class="form-section-head">
-                    <strong id="contactSectionTitle">客户信息</strong>
+                    <div class="section-title-line">
+                      <strong id="contactSectionTitle">客户信息</strong>
+                      <span class="customer-source-badge is-hidden" id="customerSourceBadge"></span>
+                    </div>
                     <button class="section-toggle" type="button" data-section-toggle="customerInfoBody" aria-expanded="true">
                       <span>收起</span>
                       <i>⌃</i>
@@ -844,6 +847,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260816-draft-scope"></script>
+    <script src="./app.js?v=20260816-customer-source"></script>
   </body>
 </html>

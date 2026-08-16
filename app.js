@@ -2170,6 +2170,24 @@
     return "意向客户未留资料";
   }
 
+  function customerSourceTransferText(log) {
+    const source = primaryRecordForLog(log) || log;
+    const visitType = source?.visitType || "";
+    if (visitType === "门店接待" || source?.storeResult) return "（客户门店接待转入）";
+    if (visitType === "新增拜访") return "（客户新增拜访转入）";
+    return source ? "（客户资料转入）" : "";
+  }
+
+  function syncCustomerSourceBadge(log = null) {
+    const badge = $("#customerSourceBadge");
+    if (!badge) return;
+    const selectedLog = log || getLog($("#oldCustomerSelect")?.value || activeDraft()?.oldCustomerLogId || "");
+    const shouldShow = isReturnVisitMode() && currentContactType() === "customer" && Boolean(selectedLog);
+    const text = shouldShow ? customerSourceTransferText(selectedLog) : "";
+    badge.textContent = text;
+    badge.classList.toggle("is-hidden", !text);
+  }
+
   function clearStoreHiddenContactFields() {
     if (!isStoreVisitMode() || storeNeedsCustomerInfo()) return;
     $("#customerInput").value = "";
@@ -2847,6 +2865,7 @@
     syncCustomerTypeLock();
     syncOldResourceFiltersFromForm({ keepSelection: true });
     setOldCustomerStatus(`${oldCustomerPickerConfig(type).statusLoadedPrefix}：${log.customer || contactTypeLabel(type)}`, "success");
+    syncCustomerSourceBadge(log);
     refreshIdentityCheckFromForm();
   }
 
@@ -5384,6 +5403,7 @@
     $("#contactDetailGrid")?.classList.toggle("resource-mode", !isCustomer);
     syncAllCollapsibleSections();
     syncConditionalFieldStates();
+    syncCustomerSourceBadge();
   }
 
   function setContactType(type, selectedValue = "", levelValue = "", options = {}) {
@@ -5428,6 +5448,7 @@
       const selectedOldCustomerId = $("#oldCustomerSelect")?.value;
       if (selectedOldCustomerId) applyOldCustomer(selectedOldCustomerId);
     }
+    syncCustomerSourceBadge();
     renderEmployeeDraftTray();
     renderDraftStatus();
   }

@@ -318,6 +318,21 @@ button {
   font-size: 15px;
 }
 
+.section-title-line {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.customer-source-badge {
+  color: #dc2626;
+  font-size: 17px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
 .section-toggle {
   border: 1px solid #c9d8eb;
   border-radius: 8px;
