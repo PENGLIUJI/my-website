@@ -1426,6 +1426,23 @@ button.badge:focus-visible {
   line-height: 1.4;
 }
 
+.draft-quick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #8a4b12;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.draft-quick-head span {
+  color: #a06623;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .draft-quick-list {
   display: grid;
   gap: 8px;

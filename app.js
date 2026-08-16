@@ -530,6 +530,10 @@
     return map[value] || "客户信息";
   }
 
+  function normalizeContactType(value) {
+    return ["master", "channel"].includes(value) ? value : "customer";
+  }
+
   function isCustomerContactLog(log) {
     return (log.contactType || "customer") === "customer" && !log.storeAnonymous;
   }
@@ -630,7 +634,7 @@
 
   function returnDraftKey(draft) {
     if (rawDraftVisitMode(draft) !== "return") return "";
-    const contactType = draft.contactType || "customer";
+    const contactType = normalizeContactType(draft.contactType);
     const fallbackIdentity = [
       contactType,
       draft.phone,
@@ -3006,15 +3010,16 @@
 
   function draftsForCurrentVisitMode(employeeId = currentEmployeeId()) {
     const mode = currentVisitMode();
-    const contactType = currentContactType();
+    const contactType = normalizeContactType(currentContactType());
     return draftsForEmployee(employeeId).filter((draft) => {
       if (draftVisitMode(draft) !== mode) return false;
-      if (mode === "new") return true;
+      const draftType = normalizeContactType(draft.contactType);
+      if (mode === "new") return draftType === contactType;
       if (mode === "store") {
-        return (draft.contactType || "customer") === "customer";
+        return draftType === "customer";
       }
       if (mode === "return") {
-        return (draft.contactType || "customer") === contactType;
+        return draftType === contactType;
       }
       return true;
     });
@@ -5289,7 +5294,7 @@
   }
 
   function currentContactType() {
-    return $("[data-contact-type].active")?.dataset.contactType || "customer";
+    return normalizeContactType($("[data-contact-type].active")?.dataset.contactType);
   }
 
   function syncCollapsibleSection(bodyId) {
@@ -5424,6 +5429,7 @@
       if (selectedOldCustomerId) applyOldCustomer(selectedOldCustomerId);
     }
     renderEmployeeDraftTray();
+    renderDraftStatus();
   }
 
   function currentWindowScrollPosition() {
@@ -6393,7 +6399,7 @@
   }
 
   function draftTitle(draft) {
-    const type = draft.contactType || "customer";
+    const type = normalizeContactType(draft.contactType);
     const name = draft.customer || "未填写姓名";
     const shortType = {
       customer: "客户",
@@ -6404,7 +6410,7 @@
   }
 
   function draftMeta(draft) {
-    const type = draft.contactType || "customer";
+    const type = normalizeContactType(draft.contactType);
     if (type === "customer") {
       return [displayBuilding(draft), displayRoom(draft)].filter(Boolean).join(" · ");
     }
@@ -6438,6 +6444,10 @@
     const hasNotice = Boolean(draftTrayNotice);
     tray.innerHTML = `
       ${hasNotice ? `<div class="draft-submit-note">${escapeHtml(draftTrayNotice)}</div>` : ""}
+      <div class="draft-quick-head">
+        <strong>未提交草稿：${escapeHtml(currentDraftScopeLabel())}</strong>
+        <span>只显示当前入口的资料</span>
+      </div>
       <div class="draft-quick-list">
         ${drafts.map((draft) => {
           const canDeleteDraft = draftVisitMode(draft) !== "return";
