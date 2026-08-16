@@ -1832,6 +1832,19 @@ button.tag.draft-tag:focus-visible {
   font-weight: 900;
 }
 
+.readonly-select-value {
+  min-height: 50px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  color: #dc2626;
+  background: #fff1f2;
+  font-size: 17px;
+  font-weight: 950;
+}
+
 .form-row.site-main-row,
 .form-row.site-extra-row {
   grid-template-columns: 1fr 1fr;
